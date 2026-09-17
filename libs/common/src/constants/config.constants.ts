@@ -56,6 +56,7 @@ export const SHARED_ENV_DEFAULTS = {
   dbHost: 'localhost',
   dbPort: 5432,
   dbUser: 'postgres',
+  dbPassword: 'postgres',
   dbMaxConnections: 10,
   redisHost: 'localhost',
   redisPort: 6379,

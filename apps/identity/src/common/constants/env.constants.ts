@@ -5,6 +5,7 @@ export const ENV_KEYS = {
 
   // App specific
   identityGrpcUrl: 'IDENTITY_GRPC_URL',
+  identityDatabaseUrl: 'IDENTITY_DATABASE_URL',
 } as const;
 
 export const ENV_DEFAULTS = {

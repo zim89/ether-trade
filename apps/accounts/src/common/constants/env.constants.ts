@@ -5,6 +5,7 @@ export const ENV_KEYS = {
 
   // App specific
   accountsGrpcUrl: 'ACCOUNTS_GRPC_URL',
+  accountsDatabaseUrl: 'ACCOUNTS_DATABASE_URL',
 } as const;
 
 export const ENV_DEFAULTS = {

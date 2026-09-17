@@ -1,0 +1,42 @@
+name: ether-trade
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ether-trade-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_MULTIPLE_DATABASES: identity_db,accounts_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ether_trade_postgres_data:/var/lib/postgresql/data
+      - ./init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: valkey/valkey:8-alpine
+    container_name: ether-trade-redis
+    restart: unless-stopped
+    command: valkey-server --save "" --loglevel notice
+    ports:
+      - "6379:6379"
+    volumes:
+      - ether_trade_redis_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  ether_trade_postgres_data:
+    name: ether_trade_postgres_data
+  ether_trade_redis_data:
+    name: ether_trade_redis_data
