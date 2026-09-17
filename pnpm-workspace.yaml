@@ -1,5 +1,6 @@
 allowBuilds:
   '@parcel/watcher': true
+  '@scarf/scarf': false
   '@valkey/valkey-glide': true
   argon2: true
   esbuild: true

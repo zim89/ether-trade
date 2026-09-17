@@ -1,7 +1,7 @@
-import { ENV_KEYS } from '../src/common/constants';
+import { ENV_DEFAULTS, ENV_KEYS } from '../src/common/constants';
 
 process.env[ENV_KEYS.nodeEnv] = 'test';
-process.env[ENV_KEYS.identityGrpcUrl] = '0.0.0.0:50051';
+process.env[ENV_KEYS.identityGrpcUrl] = ENV_DEFAULTS.identityGrpcUrl;
 process.env[ENV_KEYS.dbHost] = 'localhost';
 process.env[ENV_KEYS.dbPort] = '5432';
 process.env[ENV_KEYS.dbUser] = 'postgres';

@@ -6,6 +6,7 @@ export const LOGGER_CONTEXTS = {
   bootstrap: 'Bootstrap',
   accountsBootstrap: 'AccountsBootstrap',
   identityBootstrap: 'IdentityBootstrap',
+  apiGatewayBootstrap: 'ApiGatewayBootstrap',
   database: 'Database',
   auth: 'Auth',
   balances: 'Balances',
@@ -19,6 +20,8 @@ export const COMMON_LOGS = {
   bootstrap: {
     grpcServiceRunning: (serviceName: string, url: string) =>
       `🚀 ${serviceName} gRPC Microservice is running on ${url}`,
+    httpGatewayRunning: (url: string, swaggerUrl: string) =>
+      `🚀 API Gateway is running on ${url} (Swagger docs: ${swaggerUrl})`,
   },
   env: {
     validationFailedHeader: (count: number) => `Validation failed with ${count} error(s):`,

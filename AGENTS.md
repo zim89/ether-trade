@@ -24,6 +24,7 @@
   - `libs/common`: Global interceptors, guards, filters (`GrpcExceptionFilter`), shared utilities, UUID helpers. Always import via scoped aliases: `@app/common/constants`, `@app/common/filters`, `@app/common/types`, `@app/common/utils`.
 - **Microservice Internal Layout (`apps/<service>/src/`):**
   - `common/`: Service-local shared code. Scoped barrels only (`common/constants/index.ts`, `common/guards/index.ts`, `common/types/index.ts`, `common/utils/index.ts`). **No root `common/index.ts`** to avoid circular dependencies and enforce explicit imports.
+  - **No Re-exports of Shared Libraries:** Service-local files (e.g., `apps/<service>/src/common/constants/*.ts`) MUST NEVER re-export symbols (constants, types, enums, utils) imported from `@app/common/*` or `@app/contracts/*`. Consumers must import shared symbols directly from their authoritative library packages (`import { X } from '@app/common/constants'`). Local re-exports obscure the true origin of symbols, create ambiguity in auto-imports, and introduce unnecessary coupling.
   - `config/`: NestJS `@nestjs/config` loaders (`*.config.ts`), `env.validation.ts` (`class-validator`), `config.types.ts`. All constants are imported from `../common/constants`.
   - `<feature>/`: Domain modules (controllers, services, repositories).
   - `database/`: Service-local Drizzle database module.
@@ -66,7 +67,8 @@
 
 ## 6. Environment Configuration Standards
 
-- **Preloading & Early Validation:** Always preload environment variables before DI container assembly using `loadEnv(['.env.development.local', '.env.development', '.env'])` from `@app/common/utils` in `main.ts`, followed immediately by `validate(process.env)` to enforce fail-fast bootstrap before opening any network ports.
-- **Validation Engine:** All microservices (`apps/*`) must use `class-validator` and `class-transformer` via `config/env.validation.ts` (`EnvironmentVariables` DTO + `validate()`). Using or installing `joi` is strictly forbidden across the monorepo.
+- **Preloading & Early Validation:** Always preload and validate environment variables before DI container assembly using `loadAndValidateEnv(EnvironmentVariables)` from `@app/common/utils` in `main.ts` to enforce fail-fast bootstrap before opening any network ports.
+- **Validation Engine:** All microservices (`apps/*`) must use `class-validator` and `class-transformer` via `config/env.validation.ts` (`EnvironmentVariables` DTO + `validateEnvironment()` passed to `ConfigModule.forRoot({ validate: validateEnvironment })`). Using or installing `joi` is strictly forbidden across the monorepo.
 - **Namespaced Configs:** Domain configurations must be structured into `registerAs` factory loaders (`app.config.ts`, `database.config.ts`, etc.) and consumed via strongly typed `ConfigService<AppConfig, true>`.
 - **No Hardcoded Secrets:** Sensitive credentials (`JWT_SECRET`, `DB_PASSWORD`, `REFRESH_TOKEN_SECRET`) must never have default fallback values in any environment (dev, test, prod). Missing secrets must immediately abort startup.
+

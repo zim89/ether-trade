@@ -9,41 +9,32 @@ export class EnvironmentVariables {
   @IsOptional()
   NODE_ENV: NodeEnv = ENV_DEFAULTS.nodeEnv;
 
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  @IsOptional()
+  PORT: number = ENV_DEFAULTS.port;
+
+  @IsString()
+  @IsOptional()
+  CORS_ORIGIN: string = ENV_DEFAULTS.corsOrigin;
+
+  @IsString()
+  @IsNotEmpty()
+  IDENTITY_GRPC_URL: string = ENV_DEFAULTS.identityGrpcUrl;
+
   @IsString()
   @IsNotEmpty()
   ACCOUNTS_GRPC_URL: string = ENV_DEFAULTS.accountsGrpcUrl;
 
   @IsString()
-  @IsOptional()
-  DATABASE_URL?: string;
+  @IsNotEmpty()
+  COOKIE_SECRET: string = ENV_DEFAULTS.cookieSecret;
 
   @IsString()
   @IsNotEmpty()
-  DB_HOST: string = ENV_DEFAULTS.dbHost;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(65535)
-  DB_PORT: number = ENV_DEFAULTS.dbPort;
-
-  @IsString()
-  @IsNotEmpty()
-  DB_USER: string = ENV_DEFAULTS.dbUser;
-
-  @IsString()
-  @IsNotEmpty()
-  DB_PASSWORD: string;
-
-  @IsString()
-  @IsNotEmpty()
-  DB_NAME: string = ENV_DEFAULTS.dbName;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  DB_MAX_CONNECTIONS: number = ENV_DEFAULTS.dbMaxConnections;
+  JWT_SECRET: string;
 }
 
 /**

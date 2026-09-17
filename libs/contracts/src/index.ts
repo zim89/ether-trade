@@ -1,4 +1,5 @@
-export { PROTO_PACKAGES, type ProtoPackageName } from './packages';
+export * from './grpc.constants';
+export * from './grpc.utils';
 
 export * from './generated/identity.pb';
 export {

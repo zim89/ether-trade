@@ -16,6 +16,7 @@ export const CONFIG_NAMESPACES = {
   redis: 'redis',
   auth: 'auth',
   kafka: 'kafka',
+  gateway: 'gateway',
 } as const;
 
 /**
