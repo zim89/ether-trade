@@ -9,17 +9,8 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
+import { Currency, LedgerTransactionType, LedgerTransactionStatus } from '@app/common/constants';
 import { accounts } from './accounts.schema';
-
-export enum LedgerTransactionType {
-  DEPOSIT = 'deposit',
-  LOCK = 'lock',
-  UNLOCK = 'unlock',
-}
-
-export enum LedgerTransactionStatus {
-  COMPLETED = 'completed',
-}
 
 export const ledgerTransactionTypeEnum = pgEnum('ledger_transaction_type', [
   LedgerTransactionType.DEPOSIT,
@@ -41,7 +32,7 @@ export const ledgerTransactions = pgTable(
       .notNull()
       .references(() => accounts.id, { onDelete: 'restrict' }),
     userId: uuid('user_id').notNull(),
-    currency: varchar('currency', { length: 16 }).notNull(),
+    currency: varchar('currency', { length: 16 }).$type<Currency>().notNull(),
     type: ledgerTransactionTypeEnum('type').notNull(),
     status: ledgerTransactionStatusEnum('status')
       .notNull()

@@ -2,7 +2,8 @@ import { Module, Global, OnApplicationShutdown, Logger, Inject } from '@nestjs/c
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { ENV_KEYS } from '../config';
+import { COMMON_LOGS, CONFIG_NAMESPACES } from '@app/common/constants';
+import { AppConfig } from '../config';
 import { DRIZZLE_CLIENT, DATABASE_POOL } from './database.constants';
 import * as schema from './schema';
 
@@ -15,13 +16,14 @@ export type DrizzleDB = PostgresJsDatabase<typeof schema>;
     {
       provide: DATABASE_POOL,
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
+      useFactory: (configService: ConfigService<AppConfig, true>) => {
+        const dbConf = configService.get(CONFIG_NAMESPACES.database, { infer: true });
         const connectionString =
-          configService.get<string>(ENV_KEYS.dbUrl) ||
-          `postgres://${configService.get<string>(ENV_KEYS.dbUser, 'postgres')}:${configService.get<string>(ENV_KEYS.dbPassword, 'postgres')}@${configService.get<string>(ENV_KEYS.dbHost, 'localhost')}:${configService.get<number>(ENV_KEYS.dbPort, 5432)}/${configService.get<string>(ENV_KEYS.dbName, 'accounts_db')}`;
+          dbConf.url ||
+          `postgres://${dbConf.user}:${dbConf.password}@${dbConf.host}:${dbConf.port}/${dbConf.name}`;
 
         return postgres(connectionString, {
-          max: configService.get<number>(ENV_KEYS.dbMaxConnections, 10),
+          max: dbConf.maxConnections,
           idle_timeout: 30,
           connect_timeout: 10,
         });
@@ -46,7 +48,7 @@ export class DatabaseModule implements OnApplicationShutdown {
   ) {}
 
   async onApplicationShutdown() {
-    this.logger.log('Closing database connection pool...');
+    this.logger.log(COMMON_LOGS.db.closingConnectionPool);
     await this.pool.end();
   }
 }

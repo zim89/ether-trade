@@ -1,10 +1,6 @@
 import { pgEnum, pgTable, uuid, varchar, timestamp, boolean } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
-
-export enum UserRole {
-  TRADER = 'trader',
-  ADMIN = 'admin',
-}
+import { UserRole } from '@app/common/constants';
 
 export const userRoleEnum = pgEnum('user_role', [UserRole.TRADER, UserRole.ADMIN]);
 

@@ -3,10 +3,23 @@ import { Catch, RpcExceptionFilter, HttpException, HttpStatus, Logger } from '@n
 import { RpcException } from '@nestjs/microservices';
 import { Observable, throwError } from 'rxjs';
 
+/**
+ * Global exception filter for gRPC microservices.
+ *
+ * Intercepts internal exceptions (`HttpException`, `RpcException`, unhandled `Error`)
+ * and transforms them into standard gRPC error payloads (`@grpc/grpc-js` status codes)
+ * ensuring structured error propagation across East-West transport.
+ */
 @Catch()
 export class GrpcExceptionFilter implements RpcExceptionFilter<unknown> {
   private readonly logger = new Logger(GrpcExceptionFilter.name);
 
+  /**
+   * Catches and maps application exceptions into gRPC error observables.
+   *
+   * @param exception - The caught error object or exception instance
+   * @returns RxJS observable emitting formatted gRPC error payload (`code`, `message`, `details`)
+   */
   catch(exception: unknown): Observable<never> {
     let code = GrpcStatus.INTERNAL;
     let message: string | string[] = 'Internal server error';

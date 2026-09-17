@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import { pgTable, uuid, varchar, numeric, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
+import { Currency } from '@app/common/constants';
 import { ledgerTransactions } from './ledger-transactions.schema';
 
 export const accounts = pgTable(
@@ -10,7 +11,10 @@ export const accounts = pgTable(
       .$defaultFn(() => uuidv7())
       .primaryKey(),
     userId: uuid('user_id').notNull(),
-    currency: varchar('currency', { length: 16 }).notNull().default('USDT'),
+    currency: varchar('currency', { length: 16 })
+      .$type<Currency>()
+      .notNull()
+      .default(Currency.USDT),
     availableBalance: numeric('available_balance', { precision: 28, scale: 8 })
       .notNull()
       .default('0'),

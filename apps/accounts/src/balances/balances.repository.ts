@@ -1,38 +1,21 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
+import {
+  Currency,
+  LedgerTransactionType,
+  LedgerTransactionStatus,
+  PG_ERROR_CODES,
+  PG_LOCK_STRENGTH,
+} from '@app/common/constants';
 import { DRIZZLE_CLIENT } from '../database/database.constants';
 import type { DrizzleDB } from '../database/database.module';
 import { accounts, Account } from '../database/schema/accounts.schema';
 import {
   ledgerTransactions,
   LedgerTransaction,
-  LedgerTransactionType,
-  LedgerTransactionStatus,
 } from '../database/schema/ledger-transactions.schema';
 import { BALANCES_ERRORS } from './balances.constants';
-
-export interface DepositParams {
-  userId: string;
-  currency: string;
-  amount: string;
-  idempotencyKey?: string;
-}
-
-export interface LockParams {
-  userId: string;
-  currency: string;
-  amount: string;
-  idempotencyKey?: string;
-  referenceId?: string;
-}
-
-export interface UnlockParams {
-  userId: string;
-  currency: string;
-  amount: string;
-  idempotencyKey?: string;
-  referenceId?: string;
-}
+import type { DepositParams, LockParams, UnlockParams } from './balances.types';
 
 /**
  * Data access repository for the `accounts` and `ledger_transactions` tables.
@@ -49,7 +32,7 @@ export class BalancesRepository {
   /**
    * Finds an account by user ID and currency.
    */
-  async findByUserAndCurrency(userId: string, currency: string): Promise<Account | null> {
+  async findByUserAndCurrency(userId: string, currency: Currency): Promise<Account | null> {
     const result = await this.db
       .select()
       .from(accounts)
@@ -63,7 +46,7 @@ export class BalancesRepository {
    * Finds an existing account or creates a new zero-balance account.
    * Handles concurrent creation race conditions gracefully via fallback query.
    */
-  async findOrCreate(userId: string, currency: string): Promise<Account> {
+  async findOrCreate(userId: string, currency: Currency): Promise<Account> {
     const existing = await this.findByUserAndCurrency(userId, currency);
     if (existing) {
       return existing;
@@ -138,7 +121,7 @@ export class BalancesRepository {
         .select()
         .from(accounts)
         .where(and(eq(accounts.userId, userId), eq(accounts.currency, currency)))
-        .for('update');
+        .for(PG_LOCK_STRENGTH.update);
 
       if (!account) {
         try {
@@ -158,7 +141,7 @@ export class BalancesRepository {
             .select()
             .from(accounts)
             .where(and(eq(accounts.userId, userId), eq(accounts.currency, currency)))
-            .for('update');
+            .for(PG_LOCK_STRENGTH.update);
           account = lockedAccount;
         }
       }
@@ -195,7 +178,7 @@ export class BalancesRepository {
           typeof err === 'object' &&
           err !== null &&
           'code' in err &&
-          (err as { code: string }).code === '23505'
+          (err as { code: string }).code === PG_ERROR_CODES.uniqueViolation
         ) {
           // Unique violation on idempotency_key due to concurrent request
           const [currentAccount] = await tx
@@ -247,7 +230,7 @@ export class BalancesRepository {
         .select()
         .from(accounts)
         .where(and(eq(accounts.userId, userId), eq(accounts.currency, currency)))
-        .for('update');
+        .for(PG_LOCK_STRENGTH.update);
 
       if (!account) {
         throw new NotFoundException(BALANCES_ERRORS.accountNotFound(userId, currency));
@@ -294,7 +277,7 @@ export class BalancesRepository {
           typeof err === 'object' &&
           err !== null &&
           'code' in err &&
-          (err as { code: string }).code === '23505'
+          (err as { code: string }).code === PG_ERROR_CODES.uniqueViolation
         ) {
           const [currentAccount] = await tx
             .select()
@@ -345,7 +328,7 @@ export class BalancesRepository {
         .select()
         .from(accounts)
         .where(and(eq(accounts.userId, userId), eq(accounts.currency, currency)))
-        .for('update');
+        .for(PG_LOCK_STRENGTH.update);
 
       if (!account) {
         throw new NotFoundException(BALANCES_ERRORS.accountNotFound(userId, currency));
@@ -392,7 +375,7 @@ export class BalancesRepository {
           typeof err === 'object' &&
           err !== null &&
           'code' in err &&
-          (err as { code: string }).code === '23505'
+          (err as { code: string }).code === PG_ERROR_CODES.uniqueViolation
         ) {
           const [currentAccount] = await tx
             .select()

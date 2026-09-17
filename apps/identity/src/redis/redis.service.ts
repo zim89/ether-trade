@@ -1,7 +1,8 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GlideClient, TimeUnit } from '@valkey/valkey-glide';
-import { ENV_KEYS } from '../config';
+import { COMMON_ERRORS, COMMON_LOGS, CONFIG_NAMESPACES } from '@app/common/constants';
+import { AppConfig } from '../config';
 
 /**
  * Service managing In-Memory Redis/Valkey cache and operations:
@@ -14,7 +15,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: GlideClient | null = null;
   private readonly logger = new Logger(RedisService.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService<AppConfig, true>) {}
 
   async onModuleInit(): Promise<void> {
     await this.initClient();
@@ -24,9 +25,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * Initializes the Redis/Valkey GLIDE client connection.
    */
   private async initClient(): Promise<void> {
-    const host = this.configService.get<string>(ENV_KEYS.redisHost, 'localhost');
-    const port = Number(this.configService.get<number>(ENV_KEYS.redisPort, 6379));
-    const password = this.configService.get<string>(ENV_KEYS.redisPassword) || undefined;
+    const redisConf = this.configService.get(CONFIG_NAMESPACES.redis, { infer: true });
+    const host = redisConf.host;
+    const port = redisConf.port;
+    const password = redisConf.password;
 
     try {
       this.client = await GlideClient.createClient({
@@ -35,30 +37,30 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         requestTimeout: 2000,
       });
 
-      this.logger.log(`Connected to Redis/Valkey at ${host}:${port} via GLIDE`);
+      this.logger.log(COMMON_LOGS.redis.connected(host, port));
     } catch (err: unknown) {
-      this.logger.error(`Redis/Valkey connection error: ${(err as Error).message}`);
+      this.logger.error(COMMON_LOGS.redis.connectionError((err as Error).message));
     }
   }
 
   /**
-   * Retrieves the connected GlideClient instance.
+   * Retrieves the connected GlideClient instance (reconnects if disconnected).
    */
   async getClient(): Promise<GlideClient> {
     if (!this.client) {
       await this.initClient();
     }
     if (!this.client) {
-      throw new Error('Failed to establish Redis/Valkey GLIDE connection');
+      throw new Error(COMMON_ERRORS.redis.connectionFailed);
     }
     return this.client;
   }
 
   /**
-   * Stores a SIWE nonce for a wallet address with an expiration time in seconds.
+   * Stores a SIWE nonce with a Time-To-Live.
    *
-   * @param walletAddress - The EVM wallet address associated with the nonce
-   * @param nonce - The cryptographic random nonce string
+   * @param walletAddress - Raw or checksummed EVM address (lowercased in key)
+   * @param nonce - Cryptographic alphanumeric nonce string
    * @param ttlSeconds - Time-to-live in seconds (default: 300 / 5 minutes)
    */
   async setNonce(walletAddress: string, nonce: string, ttlSeconds = 300): Promise<void> {
@@ -74,11 +76,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Atomically retrieves and deletes a SIWE nonce to prevent replay attacks.
+   * Atomically reads and deletes a SIWE nonce via Redis `GETDEL` (Replay Attack protection).
    *
-   * Utilizes the native atomic `GETDEL` command.
-   *
-   * @param walletAddress - The EVM wallet address to retrieve the nonce for
+   * @param walletAddress - EVM address used to construct cache key
    * @returns The stored nonce string, or `null` if expired or not found
    */
   async getAndDelNonce(walletAddress: string): Promise<string | null> {
@@ -90,10 +90,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Retrieves a string value by key.
+   * Retrieves a cached string value by key.
    *
-   * @param key - Cache key
-   * @returns The cached string value, or `null` if not found
+   * @param key - Namespaced cache key (e.g. `nonce:0x...`)
    */
   async get(key: string): Promise<string | null> {
     const client = await this.getClient();
@@ -102,11 +101,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Sets a key-value pair with optional expiration time in seconds.
+   * Sets a key-value pair with optional TTL.
    *
-   * @param key - Cache key
-   * @param value - String value to store
-   * @param ttlSeconds - Optional time-to-live in seconds
+   * @param key - Namespaced cache key
+   * @param value - Stringified payload or value
+   * @param ttlSeconds - Expiration duration in seconds (optional)
    */
   async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
     const client = await this.getClient();
@@ -124,9 +123,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Deletes a key.
+   * Deletes a cached key.
    *
-   * @param key - Cache key to delete
+   * @param key - Namespaced cache key to invalidate
    */
   async del(key: string): Promise<void> {
     const client = await this.getClient();
@@ -139,7 +138,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    */
   onModuleDestroy(): void {
     if (this.client) {
-      this.logger.log('Closing Redis/Valkey connection...');
+      this.logger.log(COMMON_LOGS.redis.closingConnection);
       this.client.close();
     }
   }

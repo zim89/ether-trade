@@ -1,13 +1,14 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { GrpcExceptionFilter } from '@app/common';
+import { COMMON_LOGS, LOGGER_CONTEXTS } from '@app/common/constants';
+import { GrpcExceptionFilter } from '@app/common/filters';
 import { ACCOUNTS_PACKAGE_NAME } from '@app/contracts';
 import { AccountsModule } from './accounts.module';
-import { ACCOUNTS_GRPC, ACCOUNTS_PROTO_PATH, ENV_KEYS } from './config';
+import { ACCOUNTS_GRPC, ACCOUNTS_PROTO_PATH, ENV_KEYS } from './common/constants';
 
 async function bootstrap() {
-  const logger = new Logger('AccountsBootstrap');
+  const logger = new Logger(LOGGER_CONTEXTS.accountsBootstrap);
   const grpcUrl = process.env[ENV_KEYS.accountsGrpcUrl] ?? ACCOUNTS_GRPC.defaultUrl;
 
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(AccountsModule, {
@@ -23,7 +24,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   await app.listen();
-  logger.log(`🚀 Accounts gRPC Microservice is running on ${grpcUrl}`);
+  logger.log(COMMON_LOGS.bootstrap.grpcServiceRunning('Accounts', grpcUrl));
 }
 
 void bootstrap();

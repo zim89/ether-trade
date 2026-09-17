@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { validate as isValidUuid } from 'uuid';
+import { Currency, DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '@app/common/constants';
 import type {
   GetBalanceRequest,
   DepositSandboxFundsRequest,
@@ -9,14 +10,12 @@ import type {
 import { Account } from '../database/schema/accounts.schema';
 import {
   BALANCES_ERRORS,
-  DEFAULT_CURRENCY,
+  BALANCES_LOGS,
   SANDBOX_DEPOSIT_MAX,
-  SUPPORTED_CURRENCIES,
+  DECIMAL_SCALE,
+  AMOUNT_REGEX,
 } from './balances.constants';
 import { BalancesRepository } from './balances.repository';
-
-const DECIMAL_SCALE = 8;
-const AMOUNT_REGEX = /^(0|[1-9]\d*)(\.\d{1,8})?$/;
 
 /**
  * Service orchestrating balance management:
@@ -33,7 +32,7 @@ export class BalancesService {
   /**
    * Validates and returns the user ID if it is a valid UUID format.
    */
-  validateUserId(userId: string): string {
+  private validateUserId(userId: string): string {
     if (!userId || !isValidUuid(userId)) {
       throw new BadRequestException(BALANCES_ERRORS.invalidUserId);
     }
@@ -43,13 +42,13 @@ export class BalancesService {
   /**
    * Normalizes currency string (defaults to USDT and enforces supported currencies).
    */
-  normalizeCurrency(currency?: string): string {
+  private normalizeCurrency(currency?: string): Currency {
     if (!currency || currency.trim() === '') {
       return DEFAULT_CURRENCY;
     }
 
-    const normalized = currency.trim().toUpperCase();
-    if (!(SUPPORTED_CURRENCIES as readonly string[]).includes(normalized)) {
+    const normalized = currency.trim().toUpperCase() as Currency;
+    if (!SUPPORTED_CURRENCIES.includes(normalized)) {
       throw new BadRequestException(BALANCES_ERRORS.unsupportedCurrency(currency));
     }
 
@@ -60,7 +59,7 @@ export class BalancesService {
    * Validates that the amount is a positive decimal string with at most 8 decimal places
    * and optionally checks against a maximum limit.
    */
-  validateAmount(amount: string, maxAmount?: string): string {
+  private validateAmount(amount: string, maxAmount?: string): string {
     if (!amount || typeof amount !== 'string' || !AMOUNT_REGEX.test(amount.trim())) {
       throw new BadRequestException(BALANCES_ERRORS.invalidAmount);
     }
@@ -112,7 +111,7 @@ export class BalancesService {
     const amount = this.validateAmount(data.amount, SANDBOX_DEPOSIT_MAX);
     const idempotencyKey = data.idempotencyKey?.trim() || undefined;
 
-    this.logger.log(`Deposit requested for user ${userId}: +${amount} ${currency}`);
+    this.logger.log(BALANCES_LOGS.depositRequested(userId, amount, currency));
 
     return await this.balancesRepository.deposit({
       userId,
@@ -132,7 +131,7 @@ export class BalancesService {
     const idempotencyKey = data.idempotencyKey?.trim() || undefined;
     const referenceId = data.referenceId?.trim() || undefined;
 
-    this.logger.log(`Lock requested for user ${userId}: ${amount} ${currency}`);
+    this.logger.log(BALANCES_LOGS.lockRequested(userId, amount, currency));
 
     return await this.balancesRepository.lock({
       userId,
@@ -153,7 +152,7 @@ export class BalancesService {
     const idempotencyKey = data.idempotencyKey?.trim() || undefined;
     const referenceId = data.referenceId?.trim() || undefined;
 
-    this.logger.log(`Unlock requested for user ${userId}: ${amount} ${currency}`);
+    this.logger.log(BALANCES_LOGS.unlockRequested(userId, amount, currency));
 
     return await this.balancesRepository.unlock({
       userId,

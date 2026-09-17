@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { DEFAULT_ENV_FILES } from '@app/common/constants';
 import { AuthModule } from './auth/auth.module';
-import { envValidationSchema } from './config/env.validation';
+import { appConfig, authConfig, databaseConfig, redisConfig, validate } from './config';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
 import { UsersModule } from './users/users.module';
@@ -10,11 +11,9 @@ import { UsersModule } from './users/users.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      validationSchema: envValidationSchema,
-      validationOptions: {
-        allowUnknown: true,
-        abortEarly: false,
-      },
+      validate,
+      load: [appConfig, databaseConfig, redisConfig, authConfig],
+      envFilePath: [...DEFAULT_ENV_FILES],
     }),
     DatabaseModule,
     RedisModule,

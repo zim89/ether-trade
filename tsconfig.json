@@ -22,27 +22,9 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@app/common": [
-        "libs/common/src",
-        "libs/common/src/index.ts"
-      ],
-      "@app/common/*": [
-        "libs/common/src/*"
-      ],
-      "@app/contracts": [
-        "libs/contracts/src",
-        "libs/contracts/src/index.ts"
-      ],
-      "@app/contracts/*": [
-        "libs/contracts/src/*"
-      ],
-      "@app/database": [
-        "libs/database/src",
-        "libs/database/src/index.ts"
-      ],
-      "@app/database/*": [
-        "libs/database/src/*"
-      ]
+      "@app/common/*": ["libs/common/src/*"],
+      "@app/contracts": ["libs/contracts/src", "libs/contracts/src/index.ts"],
+      "@app/contracts/*": ["libs/contracts/src/*"]
     }
   }
 }
