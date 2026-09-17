@@ -1,5 +1,5 @@
-import { pgTable, uuid, varchar, timestamp, boolean, text } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { pgTable, uuid, varchar, timestamp, boolean, text } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
 import { users } from './users.schema';
 

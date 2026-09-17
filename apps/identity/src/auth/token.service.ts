@@ -1,36 +1,25 @@
-import { Injectable, UnauthorizedException, Inject, Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import * as argon2 from 'argon2';
 import { randomBytes } from 'crypto';
+import { Injectable, UnauthorizedException, Inject, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import * as argon2 from 'argon2';
 import { eq } from 'drizzle-orm';
+import { CONFIG_NAMESPACES } from '@app/common/constants';
+import { JwtPayload } from '@app/common/types';
+import { AppConfig } from '../config';
 import { DRIZZLE_CLIENT } from '../database/database.constants';
 import type { DrizzleDB } from '../database/database.module';
 import { refreshTokens } from '../database/schema/refresh-tokens.schema';
 import { User } from '../database/schema/users.schema';
-import { JwtPayload } from '@app/common';
 import { UsersService } from '../users/users.service';
-import { ENV_KEYS } from '../config';
 import { AUTH_ERRORS, AUTH_LOGS } from './auth.constants';
+import { GeneratedTokens } from './auth.types';
 
 /**
- * Result of a token generation or rotation operation.
- */
-export interface GeneratedTokens {
-  /** Signed JWT access token for authenticating API requests */
-  accessToken: string;
-  /** Opaque random refresh token string */
-  refreshToken: string;
-  /** Access token expiration time in seconds */
-  expiresIn: number;
-}
-
-/**
- * Service responsible for managing the lifecycle of authentication tokens:
- * - Issuing signed JWT access tokens.
- * - Generating and storing Argon2-hashed refresh tokens in the database.
- * - Rotating refresh tokens with Token Reuse Detection.
- * - Revoking active user sessions upon logout or security breach.
+ * Manages the authentication token lifecycle:
+ * - Issues short-lived JWT access tokens (15m).
+ * - Issues Argon2-hashed refresh tokens persisted to PostgreSQL (7d).
+ * - Enforces Token Reuse Detection (revokes all user sessions on compromised token reuse).
  */
 @Injectable()
 export class TokenService {
@@ -40,21 +29,17 @@ export class TokenService {
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService<AppConfig, true>,
     private readonly usersService: UsersService,
     @Inject(DRIZZLE_CLIENT)
     private readonly db: DrizzleDB,
   ) {}
 
   /**
-   * Generates a new Access Token (JWT) and Refresh Token pair for a user.
+   * Issues a signed JWT access token and persists an Argon2-hashed refresh token.
    *
-   * The refresh token is generated as a secure random hex string,
-   * hashed using Argon2, and persisted to the database along with client metadata.
-   *
-   * @param user - The authenticated user entity
-   * @param metadata - Optional client metadata (User-Agent and IP address)
-   * @returns Generated access and refresh tokens with expiration details
+   * @param user - User entity used to populate JWT claims (`sub`, `walletAddress`, `role`)
+   * @param metadata - Client session telemetry for audit trail (User-Agent and IP)
    */
   async generateTokens(
     user: User,
@@ -66,9 +51,11 @@ export class TokenService {
       role: user.role,
     };
 
+    const authConf = this.configService.get(CONFIG_NAMESPACES.auth, { infer: true });
+
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: this.ACCESS_TOKEN_EXPIRATION_SECONDS,
-      secret: this.configService.get<string>(ENV_KEYS.jwtSecret),
+      secret: authConf.jwtSecret,
     });
 
     const rawRefreshToken = randomBytes(40).toString('hex');
@@ -93,15 +80,14 @@ export class TokenService {
   }
 
   /**
-   * Rotates a refresh token and issues a new token pair.
+   * Rotates a refresh token and issues a fresh token pair.
    *
-   * Implements **Token Reuse Detection**: If an already revoked token is used,
-   * it indicates potential token theft, and ALL active refresh tokens for the user
-   * are immediately revoked to protect the account.
+   * @remarks
+   * Implements **Token Reuse Detection**: If an already revoked token is submitted,
+   * it indicates token compromise. ALL active sessions for this user are revoked immediately.
    *
-   * @param rawRefreshToken - The raw refresh token string provided by the client
-   * @returns Newly generated tokens and the associated user entity
-   * @throws {UnauthorizedException} If token is missing, invalid, expired, or compromised
+   * @param rawRefreshToken - Raw 40-byte hex refresh token string provided by client
+   * @throws {UnauthorizedException} When the token is missing, invalid, expired, or compromised
    */
   async rotateTokens(rawRefreshToken: string): Promise<{ tokens: GeneratedTokens; user: User }> {
     if (!rawRefreshToken) {
@@ -155,11 +141,11 @@ export class TokenService {
   }
 
   /**
-   * Revokes a specific refresh token (used during user logout).
+   * Revokes a specific refresh token during single-session logout.
    *
-   * @param rawRefreshToken - The raw refresh token to revoke
-   * @param userId - Optional user ID to narrow down the search query
-   * @returns `true` if the token was found and revoked, `false` otherwise
+   * @param rawRefreshToken - Raw 40-byte hex refresh token to revoke
+   * @param userId - Optional user UUIDv7 to narrow down query search space
+   * @returns `true` if the matching token was located and revoked, `false` otherwise
    */
   async revokeToken(rawRefreshToken: string, userId?: string): Promise<boolean> {
     const query = userId
@@ -181,9 +167,9 @@ export class TokenService {
   }
 
   /**
-   * Revokes all active refresh tokens for a specific user, invalidating all sessions.
+   * Revokes all active refresh tokens for a user (used during security breaches or full logout).
    *
-   * @param userId - The unique identifier of the user
+   * @param userId - Unique user identifier (UUIDv7 string)
    */
   async revokeAllUserTokens(userId: string): Promise<void> {
     await this.db
@@ -193,16 +179,16 @@ export class TokenService {
   }
 
   /**
-   * Verifies and decodes a JWT access token.
+   * Verifies and decodes a signed JWT access token.
    *
-   * @param token - The raw JWT access token string
-   * @returns Decoded JWT payload containing user ID, wallet address, and role
-   * @throws {UnauthorizedException} If the token signature is invalid or expired
+   * @param token - Raw signed JWT string from Authorization header
+   * @throws {UnauthorizedException} If the token signature is invalid or has expired
    */
   async verifyAccessToken(token: string): Promise<JwtPayload> {
     try {
+      const authConf = this.configService.get(CONFIG_NAMESPACES.auth, { infer: true });
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: this.configService.get<string>(ENV_KEYS.jwtSecret),
+        secret: authConf.jwtSecret,
       });
       return payload;
     } catch {

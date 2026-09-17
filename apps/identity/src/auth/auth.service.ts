@@ -1,12 +1,13 @@
 import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
-import { parseSiweMessage } from 'viem/siwe';
 import { verifyMessage, Hex } from 'viem';
-import { UsersService } from '../users/users.service';
-import { User } from '../database/schema/users.schema';
+import { parseSiweMessage } from 'viem/siwe';
 import { AuthResponse, ValidateTokenResponse } from '@app/contracts';
-import { NonceService, GeneratedNonce } from './nonce.service';
-import { GeneratedTokens, TokenService } from './token.service';
+import { User } from '../database/schema/users.schema';
+import { UsersService } from '../users/users.service';
 import { AUTH_ERRORS, AUTH_LOGS } from './auth.constants';
+import { GeneratedNonce, GeneratedTokens } from './auth.types';
+import { NonceService } from './nonce.service';
+import { TokenService } from './token.service';
 
 /**
  * Service orchestrating Web3 authentication workflows:
@@ -26,30 +27,28 @@ export class AuthService {
   ) {}
 
   /**
-   * Generates a single-use SIWE nonce for a given wallet address.
+   * Generates a single-use SIWE nonce with a 5-minute TTL for a given wallet address.
    *
-   * @param walletAddress - The EVM address to generate a nonce for
-   * @returns Object containing the nonce and expiration timestamp in Unix seconds
+   * @param walletAddress - Raw or checksummed EVM address (e.g. `0x5aaeb...`)
    */
   async getNonce(walletAddress: string): Promise<GeneratedNonce> {
     return this.nonceService.generateNonce(walletAddress);
   }
 
   /**
-   * Verifies a SIWE message and cryptographic signature according to EIP-4361.
+   * Verifies an EIP-4361 SIWE message and cryptographic signature.
    *
+   * @remarks
    * Workflow:
-   * 1. Parses and validates the raw SIWE message structure.
-   * 2. Checks message expiration time (if provided).
-   * 3. Atomically consumes the nonce from Redis to prevent replay attacks.
-   * 4. Verifies the ECDSA signature against the wallet address using `viem`.
-   * 5. Finds or registers the user in PostgreSQL.
-   * 6. Generates a new Access JWT and Argon2-hashed Refresh Token pair.
+   * 1. Parses and validates SIWE message structure and expiration time.
+   * 2. Atomically consumes the nonce from Redis (`GETDEL`) to prevent replay attacks.
+   * 3. Verifies the ECDSA signature against the wallet address via `viem`.
+   * 4. Finds or registers the user in PostgreSQL (with EIP-55 checksum address).
+   * 5. Issues a new Access JWT and Argon2-hashed Refresh Token pair.
    *
-   * @param rawMessage - Full EIP-4361 formatted text message
-   * @param signature - Hex-encoded signature string (0x...)
-   * @returns Authentication response containing tokens and user profile
-   * @throws {BadRequestException} If message or signature is missing or malformed
+   * @param rawMessage - Full plaintext EIP-4361 formatted message
+   * @param signature - 65-byte hex-encoded ECDSA signature string (`0x...`)
+   * @throws {BadRequestException} If message structure or signature is malformed
    * @throws {UnauthorizedException} If nonce is expired/consumed or signature is invalid
    */
   async verifySiwe(rawMessage: string, signature: string): Promise<AuthResponse> {
@@ -99,11 +98,10 @@ export class AuthService {
   }
 
   /**
-   * Rotates tokens using an active Refresh Token.
+   * Rotates session tokens using an active Refresh Token.
    *
-   * @param refreshToken - The active refresh token string
-   * @returns New token pair and user profile
-   * @throws {UnauthorizedException} If refresh token is expired, revoked, or invalid
+   * @param refreshToken - Raw opaque refresh token string (40 bytes hex)
+   * @throws {UnauthorizedException} If the refresh token is expired, revoked, or compromised
    */
   async refreshTokens(refreshToken: string): Promise<AuthResponse> {
     const { tokens, user } = await this.tokenService.rotateTokens(refreshToken);
@@ -111,11 +109,10 @@ export class AuthService {
   }
 
   /**
-   * Revokes a user session (logout).
+   * Revokes a user session upon logout.
    *
    * @param refreshToken - The refresh token of the session to terminate
-   * @param userId - Optional user ID to scope the query
-   * @returns `true` if the session was found and revoked, `false` otherwise
+   * @param userId - Optional UUIDv7 of the user to restrict query scope
    * @throws {BadRequestException} If refresh token is missing
    */
   async logout(refreshToken: string, userId?: string): Promise<boolean> {
@@ -126,11 +123,9 @@ export class AuthService {
   }
 
   /**
-   * Validates an access token and returns payload data.
-   * Designed for internal inter-service gRPC communication.
+   * Validates a JWT access token for internal East-West gRPC communication.
    *
-   * @param token - Raw JWT access token
-   * @returns Validation response with validity status and extracted user claims
+   * @param token - Raw signed JWT string from Authorization header
    */
   async validateToken(token: string): Promise<ValidateTokenResponse> {
     try {

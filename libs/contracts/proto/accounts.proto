@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package accounts;
+
+service AccountsService {
+  // Returns the account for (user_id, currency), creating a zero-balance row if missing
+  rpc GetBalance (GetBalanceRequest) returns (BalanceResponse);
+
+  // Credits sandbox USDT to available_balance (dev/sandbox faucet)
+  rpc DepositSandboxFunds (DepositSandboxFundsRequest) returns (BalanceResponse);
+
+  // Moves funds available → locked (reserve for an order)
+  rpc LockBalance (LockBalanceRequest) returns (BalanceResponse);
+
+  // Moves funds locked → available (release reserve)
+  rpc UnlockBalance (UnlockBalanceRequest) returns (BalanceResponse);
+}
+
+message GetBalanceRequest {
+  string user_id = 1;
+  string currency = 2; // empty → USDT
+}
+
+message DepositSandboxFundsRequest {
+  string user_id = 1;
+  string amount = 2;            // positive decimal string
+  string currency = 3;          // empty → USDT
+  string idempotency_key = 4;   // optional; duplicate key returns the original result
+}
+
+message LockBalanceRequest {
+  string user_id = 1;
+  string amount = 2;
+  string currency = 3;
+  string idempotency_key = 4;
+  string reference_id = 5;      // e.g. future order id
+}
+
+message UnlockBalanceRequest {
+  string user_id = 1;
+  string amount = 2;
+  string currency = 3;
+  string idempotency_key = 4;
+  string reference_id = 5;
+}
+
+message BalanceResponse {
+  string account_id = 1;
+  string user_id = 2;
+  string currency = 3;
+  string available_balance = 4;
+  string locked_balance = 5;
+  // available + locked (calculated in SQL or post-update)
+  string total_balance = 6; 
+  // Unix seconds
+  int64 updated_at = 7;
+}

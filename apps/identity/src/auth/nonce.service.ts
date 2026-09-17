@@ -3,16 +3,7 @@ import { generateSiweNonce } from 'viem/siwe';
 import { RedisService } from '../redis/redis.service';
 import { UsersService } from '../users/users.service';
 import { AUTH_LOGS } from './auth.constants';
-
-/**
- * Result of a generated SIWE nonce.
- */
-export interface GeneratedNonce {
-  /** Cryptographically secure random nonce string */
-  nonce: string;
-  /** Unix timestamp (in seconds) when the nonce expires */
-  expiresAt: number;
-}
+import { GeneratedNonce } from './auth.types';
 
 /**
  * Service responsible for the generation, caching, and single-use consumption
@@ -29,11 +20,9 @@ export class NonceService {
   ) {}
 
   /**
-   * Generates a cryptographically secure SIWE nonce for a wallet address
-   * and stores it in Redis with a 5-minute Time-To-Live (TTL).
+   * Generates a cryptographically secure SIWE nonce with a 5-minute TTL.
    *
-   * @param walletAddress - The EVM wallet address requesting authentication
-   * @returns Object containing the generated nonce and expiration timestamp in Unix seconds
+   * @param walletAddress - Raw or checksummed EVM address (e.g. `0x5aaeb...`)
    */
   async generateNonce(walletAddress: string): Promise<GeneratedNonce> {
     const normalizedAddress = this.usersService.normalizeAddress(walletAddress);
@@ -46,14 +35,11 @@ export class NonceService {
   }
 
   /**
-   * Atomically validates and consumes a SIWE nonce from Redis.
+   * Atomically validates and consumes a SIWE nonce via Redis `GETDEL` (Replay Attack protection).
    *
-   * By using atomic GETDEL / Lua script in Redis, the nonce is deleted
-   * on the first read, guaranteeing that a signature cannot be replayed.
-   *
-   * @param walletAddress - The EVM wallet address to validate the nonce for
-   * @param providedNonce - The nonce string provided in the SIWE message
-   * @returns `true` if the nonce was valid, matched, and successfully consumed; `false` otherwise
+   * @param walletAddress - Raw or checksummed EVM address associated with the nonce
+   * @param providedNonce - The 8+ char alphanumeric nonce string from the parsed SIWE message
+   * @returns `true` if the nonce matched and was successfully consumed, `false` otherwise
    */
   async consumeNonce(walletAddress: string, providedNonce: string): Promise<boolean> {
     const normalizedAddress = this.usersService.normalizeAddress(walletAddress);

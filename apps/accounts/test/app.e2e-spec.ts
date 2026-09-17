@@ -1,6 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import { Test, TestingModule } from '@nestjs/testing';
 import { AccountsModule } from './../src/accounts.module';
 
 describe('AccountsController (e2e)', () => {
@@ -15,7 +14,5 @@ describe('AccountsController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer()).get('/').expect(200).expect('Hello World!');
-  });
+  it.todo('should be implemented');
 });

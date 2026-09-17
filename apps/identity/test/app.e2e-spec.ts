@@ -1,5 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import { IdentityModule } from './../src/identity.module';
 
 describe('IdentityController (e2e)', () => {

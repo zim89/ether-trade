@@ -1,28 +1,73 @@
-import * as Joi from 'joi';
-import { ENV_KEYS } from './env.constants';
+import { Type } from 'class-transformer';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { NodeEnv } from '@app/common/constants';
+import { validateEnv } from '@app/common/utils';
+import { ENV_DEFAULTS } from '../common/constants';
 
-export const envValidationSchema = Joi.object({
-  // App
-  [ENV_KEYS.nodeEnv]: Joi.string()
-    .valid('development', 'production', 'test')
-    .default('development'),
-  [ENV_KEYS.identityGrpcUrl]: Joi.string().default('0.0.0.0:50051'),
+export class EnvironmentVariables {
+  @IsEnum(NodeEnv)
+  @IsOptional()
+  NODE_ENV: NodeEnv = ENV_DEFAULTS.nodeEnv;
 
-  // Auth / JWT
-  [ENV_KEYS.jwtSecret]: Joi.string().default('super-secret-dev-jwt-key'),
-  [ENV_KEYS.jwtExpiresIn]: Joi.string().default('15m'),
+  @IsString()
+  @IsNotEmpty()
+  IDENTITY_GRPC_URL: string = ENV_DEFAULTS.identityGrpcUrl;
 
-  // Database
-  [ENV_KEYS.dbUrl]: Joi.string().optional(),
-  [ENV_KEYS.dbHost]: Joi.string().default('localhost'),
-  [ENV_KEYS.dbPort]: Joi.number().port().default(5432),
-  [ENV_KEYS.dbUser]: Joi.string().default('postgres'),
-  [ENV_KEYS.dbPassword]: Joi.string().default('postgres'),
-  [ENV_KEYS.dbName]: Joi.string().default('identity_db'),
-  [ENV_KEYS.dbMaxConnections]: Joi.number().default(10),
+  @IsString()
+  @IsOptional()
+  DATABASE_URL?: string;
 
-  // Redis
-  [ENV_KEYS.redisHost]: Joi.string().default('localhost'),
-  [ENV_KEYS.redisPort]: Joi.number().port().default(6379),
-  [ENV_KEYS.redisPassword]: Joi.string().optional().allow(''),
-});
+  @IsString()
+  @IsNotEmpty()
+  DB_HOST: string = ENV_DEFAULTS.dbHost;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(65535)
+  DB_PORT: number = ENV_DEFAULTS.dbPort;
+
+  @IsString()
+  @IsNotEmpty()
+  DB_USER: string = ENV_DEFAULTS.dbUser;
+
+  @IsString()
+  @IsNotEmpty()
+  DB_PASSWORD: string;
+
+  @IsString()
+  @IsNotEmpty()
+  DB_NAME: string = ENV_DEFAULTS.dbName;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  DB_MAX_CONNECTIONS: number = ENV_DEFAULTS.dbMaxConnections;
+
+  @IsString()
+  @IsNotEmpty()
+  REDIS_HOST: string = ENV_DEFAULTS.redisHost;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(65535)
+  REDIS_PORT: number = ENV_DEFAULTS.redisPort;
+
+  @IsString()
+  @IsOptional()
+  REDIS_PASSWORD?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  JWT_SECRET: string;
+
+  @IsString()
+  @IsOptional()
+  JWT_EXPIRES_IN: string = ENV_DEFAULTS.jwtExpiresIn;
+}
+
+export function validate(config: Record<string, unknown>): EnvironmentVariables {
+  return validateEnv(EnvironmentVariables, config);
+}

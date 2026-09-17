@@ -1,8 +1,9 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+import { UserRole } from '@app/common/constants';
 import { DRIZZLE_CLIENT } from '../database/database.constants';
 import type { DrizzleDB } from '../database/database.module';
-import { users, User, UserRole } from '../database/schema/users.schema';
+import { users, User } from '../database/schema/users.schema';
 import { USERS_ERRORS } from './users.constants';
 
 /**

@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { getAddress, isAddress } from 'viem';
-import { UsersRepository } from './users.repository';
 import { User } from '../database/schema/users.schema';
-import { USERS_ERRORS } from './users.constants';
+import { USERS_ERRORS, USERS_LOGS } from './users.constants';
+import { UsersRepository } from './users.repository';
 
 /**
  * Service managing user domain operations:
@@ -17,11 +17,11 @@ export class UsersService {
   constructor(private readonly usersRepository: UsersRepository) {}
 
   /**
-   * Validates and normalizes an EVM address to EIP-55 Checksum format.
+   * Validates and converts an EVM address to EIP-55 Checksum format.
    *
-   * @param address - Raw EVM wallet address string
-   * @returns Checksum-normalized address string (e.g. 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed)
-   * @throws {BadRequestException} If the address is invalid or malformed
+   * @param address - Raw 42-character hex EVM address (e.g. `0x5aaeb6053f3e94c9...`)
+   * @returns Checksum-cased address string (e.g. `0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed`)
+   * @throws {BadRequestException} If the address format is invalid or malformed
    */
   normalizeAddress(address: string): string {
     if (!address || !isAddress(address)) {
@@ -31,10 +31,9 @@ export class UsersService {
   }
 
   /**
-   * Retrieves a user entity by its UUID.
+   * Retrieves a user by their unique identifier.
    *
-   * @param id - Unique user identifier (UUIDv7)
-   * @returns User entity
+   * @param id - Unique user identifier (UUIDv7 string)
    * @throws {NotFoundException} If no user exists with the given ID
    */
   async findById(id: string): Promise<User> {
@@ -46,10 +45,9 @@ export class UsersService {
   }
 
   /**
-   * Retrieves a user entity by their normalized EVM wallet address.
+   * Retrieves a user by their EVM wallet address.
    *
-   * @param walletAddress - Raw or normalized EVM wallet address
-   * @returns User entity
+   * @param walletAddress - Raw or checksummed EVM address (automatically normalized to EIP-55)
    * @throws {NotFoundException} If no user exists with the given address
    */
   async findByAddress(walletAddress: string): Promise<User> {
@@ -62,16 +60,16 @@ export class UsersService {
   }
 
   /**
-   * Finds an existing user by wallet address or creates a new user profile.
+   * Looks up an existing user by wallet address or registers a new default trader profile.
    *
-   * @param walletAddress - Raw EVM wallet address
+   * @param walletAddress - Raw or checksummed EVM address
    * @returns Object containing the user entity and an `isNew` boolean flag
    */
   async findOrCreate(walletAddress: string): Promise<{ user: User; isNew: boolean }> {
     const normalized = this.normalizeAddress(walletAddress);
     const result = await this.usersRepository.findOrCreateByWalletAddress(normalized);
     if (result.isNew) {
-      this.logger.log(`New user registered: ${normalized} (ID: ${result.user.id})`);
+      this.logger.log(USERS_LOGS.userRegistered(normalized, result.user.id));
     }
     return result;
   }

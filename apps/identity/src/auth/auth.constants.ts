@@ -17,8 +17,6 @@ export const AUTH_ERRORS = {
   invalidSignature: 'Invalid cryptographic signature',
 } as const;
 
-export type AuthErrorKey = keyof typeof AUTH_ERRORS;
-
 /**
  * Diagnostic log messages for the authentication module.
  */
@@ -31,5 +29,3 @@ export const AUTH_LOGS = {
   revokedTokenReuseDetected: (userId: string) =>
     `Revoked refresh token reuse detected for user ${userId}! Revoking all sessions.`,
 } as const;
-
-export type AuthLogKey = keyof typeof AUTH_LOGS;
