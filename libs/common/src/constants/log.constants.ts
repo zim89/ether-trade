@@ -27,6 +27,11 @@ export const COMMON_LOGS = {
   },
   db: {
     closingConnectionPool: 'Closing database connection pool...',
+    applyingMigrations: (serviceName: string, dbName: string) =>
+      `[MIGRATE:${serviceName}] Applying migrations to ${dbName}...`,
+    migrationsApplied: (serviceName: string) =>
+      `[MIGRATE:${serviceName}] Migrations applied successfully!`,
+    migrationFailed: (serviceName: string) => `[MIGRATE:${serviceName}] Migration failed:`,
   },
   redis: {
     connected: (host: string, port: number) =>
