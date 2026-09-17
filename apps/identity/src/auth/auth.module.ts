@@ -18,7 +18,7 @@ import { TokenService } from './token.service';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService<AppConfig, true>) => {
-        const authConf = configService.get(CONFIG_NAMESPACES.auth, { infer: true });
+        const authConf = configService.getOrThrow(CONFIG_NAMESPACES.auth, { infer: true });
         return {
           secret: authConf.jwtSecret,
           signOptions: {

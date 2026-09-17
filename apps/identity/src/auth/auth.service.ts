@@ -77,11 +77,16 @@ export class AuthService {
     }
 
     // 4. Cryptographic signature verification
-    const isSignatureValid = await verifyMessage({
-      address: walletAddress as Hex,
-      message: rawMessage,
-      signature: signature as Hex,
-    });
+    let isSignatureValid = false;
+    try {
+      isSignatureValid = await verifyMessage({
+        address: walletAddress as Hex,
+        message: rawMessage,
+        signature: signature as Hex,
+      });
+    } catch {
+      isSignatureValid = false;
+    }
 
     if (!isSignatureValid) {
       this.logger.warn(AUTH_LOGS.signatureVerificationFailed(walletAddress));

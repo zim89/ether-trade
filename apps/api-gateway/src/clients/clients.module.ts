@@ -22,7 +22,7 @@ import { GatewayConfig } from '../config';
         imports: [ConfigModule],
         inject: [ConfigService],
         useFactory: (configService: ConfigService) => {
-          const config = configService.get<GatewayConfig>(CONFIG_NAMESPACES.gateway);
+          const config = configService.getOrThrow<GatewayConfig>(CONFIG_NAMESPACES.gateway);
           return {
             transport: Transport.GRPC,
             options: {
@@ -38,13 +38,13 @@ import { GatewayConfig } from '../config';
         imports: [ConfigModule],
         inject: [ConfigService],
         useFactory: (configService: ConfigService) => {
-          const config = configService.get<GatewayConfig>(CONFIG_NAMESPACES.gateway);
+          const config = configService.getOrThrow<GatewayConfig>(CONFIG_NAMESPACES.gateway);
           return {
             transport: Transport.GRPC,
             options: {
               package: PROTO_PACKAGES.accounts,
               protoPath: getServiceProtoPath(GRPC_SERVICE_KEYS.accounts),
-              url: config?.accountsGrpcUrl ?? GRPC_SERVICES_CONFIG.accounts.defaultUrl,
+              url: config.accountsGrpcUrl || GRPC_SERVICES_CONFIG.accounts.defaultUrl,
             },
           };
         },

@@ -17,7 +17,7 @@ export type DrizzleDB = PostgresJsDatabase<typeof schema>;
       provide: DATABASE_POOL,
       inject: [ConfigService],
       useFactory: (configService: ConfigService<AppConfig, true>) => {
-        const dbConf = configService.get(CONFIG_NAMESPACES.database, { infer: true });
+        const dbConf = configService.getOrThrow(CONFIG_NAMESPACES.database, { infer: true });
         const connectionString =
           dbConf.url ||
           `postgres://${dbConf.user}:${dbConf.password}@${dbConf.host}:${dbConf.port}/${dbConf.name}`;

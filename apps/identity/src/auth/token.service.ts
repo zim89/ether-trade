@@ -51,7 +51,7 @@ export class TokenService {
       role: user.role,
     };
 
-    const authConf = this.configService.get(CONFIG_NAMESPACES.auth, { infer: true });
+    const authConf = this.configService.getOrThrow(CONFIG_NAMESPACES.auth, { infer: true });
 
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: this.ACCESS_TOKEN_EXPIRATION_SECONDS,
@@ -186,7 +186,7 @@ export class TokenService {
    */
   async verifyAccessToken(token: string): Promise<JwtPayload> {
     try {
-      const authConf = this.configService.get(CONFIG_NAMESPACES.auth, { infer: true });
+      const authConf = this.configService.getOrThrow(CONFIG_NAMESPACES.auth, { infer: true });
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
         secret: authConf.jwtSecret,
       });
