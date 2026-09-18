@@ -13,6 +13,7 @@ export const ENV_KEYS = {
   accountsGrpcUrl: 'ACCOUNTS_GRPC_URL',
   cookieSecret: 'COOKIE_SECRET',
   jwtSecret: 'JWT_SECRET',
+  grpcDefaultDeadlineMs: 'GRPC_DEFAULT_DEADLINE_MS',
 } as const;
 
 /**
@@ -25,6 +26,7 @@ export const ENV_DEFAULTS = {
   identityGrpcUrl: GRPC_SERVICES_CONFIG.identity.defaultUrl,
   accountsGrpcUrl: GRPC_SERVICES_CONFIG.accounts.defaultUrl,
   cookieSecret: 'dev-cookie-secret-min-32-chars-long-local',
+  grpcDefaultDeadlineMs: 5000,
 } as const;
 
 /**

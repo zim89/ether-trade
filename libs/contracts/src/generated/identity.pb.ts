@@ -5,6 +5,7 @@
 // source: identity.proto
 
 /* eslint-disable */
+import type { Metadata } from "@grpc/grpc-js";
 import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
 import { Observable } from "rxjs";
 
@@ -76,64 +77,115 @@ export interface ValidateTokenResponse {
   role: string;
 }
 
+export interface UpdateUserRoleRequest {
+  userId: string;
+  role: string;
+}
+
+export interface SandboxLoginRequest {
+  walletAddress: string;
+  role: string;
+}
+
 export const IDENTITY_PACKAGE_NAME = "identity";
 
 export interface IdentityServiceClient {
   /** Generates a single-use SIWE nonce for a wallet address */
 
-  getNonce(request: GetNonceRequest): Observable<GetNonceResponse>;
+  getNonce(request: GetNonceRequest, metadata?: Metadata): Observable<GetNonceResponse>;
 
   /** Verifies EIP-4361 signature, finds/registers user and returns tokens */
 
-  verifySiwe(request: VerifySiweRequest): Observable<AuthResponse>;
+  verifySiwe(request: VerifySiweRequest, metadata?: Metadata): Observable<AuthResponse>;
 
   /** Rotates Access & Refresh tokens */
 
-  refreshTokens(request: RefreshTokensRequest): Observable<AuthResponse>;
+  refreshTokens(request: RefreshTokensRequest, metadata?: Metadata): Observable<AuthResponse>;
 
   /** Revokes a user session */
 
-  logout(request: LogoutRequest): Observable<LogoutResponse>;
+  logout(request: LogoutRequest, metadata?: Metadata): Observable<LogoutResponse>;
 
   /** Query user profile */
 
-  getUserById(request: GetUserByIdRequest): Observable<UserResponse>;
+  getUserById(request: GetUserByIdRequest, metadata?: Metadata): Observable<UserResponse>;
 
-  getUserByAddress(request: GetUserByAddressRequest): Observable<UserResponse>;
+  getUserByAddress(request: GetUserByAddressRequest, metadata?: Metadata): Observable<UserResponse>;
 
   /** Internal token validation */
 
-  validateToken(request: ValidateTokenRequest): Observable<ValidateTokenResponse>;
+  validateToken(request: ValidateTokenRequest, metadata?: Metadata): Observable<ValidateTokenResponse>;
+
+  /** Updates user role (admin/dev sandbox) */
+
+  updateUserRole(request: UpdateUserRoleRequest, metadata?: Metadata): Observable<UserResponse>;
+
+  /** Sandbox login without cryptographic signature (dev/test environments only) */
+
+  sandboxLogin(request: SandboxLoginRequest, metadata?: Metadata): Observable<AuthResponse>;
 }
 
 export interface IdentityServiceController {
   /** Generates a single-use SIWE nonce for a wallet address */
 
-  getNonce(request: GetNonceRequest): Promise<GetNonceResponse> | Observable<GetNonceResponse> | GetNonceResponse;
+  getNonce(
+    request: GetNonceRequest,
+    metadata?: Metadata,
+  ): Promise<GetNonceResponse> | Observable<GetNonceResponse> | GetNonceResponse;
 
   /** Verifies EIP-4361 signature, finds/registers user and returns tokens */
 
-  verifySiwe(request: VerifySiweRequest): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
+  verifySiwe(
+    request: VerifySiweRequest,
+    metadata?: Metadata,
+  ): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
 
   /** Rotates Access & Refresh tokens */
 
-  refreshTokens(request: RefreshTokensRequest): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
+  refreshTokens(
+    request: RefreshTokensRequest,
+    metadata?: Metadata,
+  ): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
 
   /** Revokes a user session */
 
-  logout(request: LogoutRequest): Promise<LogoutResponse> | Observable<LogoutResponse> | LogoutResponse;
+  logout(
+    request: LogoutRequest,
+    metadata?: Metadata,
+  ): Promise<LogoutResponse> | Observable<LogoutResponse> | LogoutResponse;
 
   /** Query user profile */
 
-  getUserById(request: GetUserByIdRequest): Promise<UserResponse> | Observable<UserResponse> | UserResponse;
+  getUserById(
+    request: GetUserByIdRequest,
+    metadata?: Metadata,
+  ): Promise<UserResponse> | Observable<UserResponse> | UserResponse;
 
-  getUserByAddress(request: GetUserByAddressRequest): Promise<UserResponse> | Observable<UserResponse> | UserResponse;
+  getUserByAddress(
+    request: GetUserByAddressRequest,
+    metadata?: Metadata,
+  ): Promise<UserResponse> | Observable<UserResponse> | UserResponse;
 
   /** Internal token validation */
 
   validateToken(
     request: ValidateTokenRequest,
+    metadata?: Metadata,
   ): Promise<ValidateTokenResponse> | Observable<ValidateTokenResponse> | ValidateTokenResponse;
+
+  /** Updates user role (admin/dev sandbox) */
+
+  updateUserRole(
+    request: UpdateUserRoleRequest,
+    metadata?: Metadata,
+  ): Promise<UserResponse> | Observable<UserResponse> | UserResponse;
+
+  /** Sandbox login without cryptographic signature (dev/test environments only) */
+
+  sandboxLogin(
+    request: SandboxLoginRequest,
+    metadata?: Metadata,
+  ): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
 }
 
 export function IdentityServiceControllerMethods() {
@@ -146,6 +198,8 @@ export function IdentityServiceControllerMethods() {
       "getUserById",
       "getUserByAddress",
       "validateToken",
+      "updateUserRole",
+      "sandboxLogin",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

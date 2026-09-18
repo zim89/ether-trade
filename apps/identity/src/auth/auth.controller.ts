@@ -8,6 +8,7 @@ import {
   type RefreshTokensRequest,
   type LogoutRequest,
   type LogoutResponse,
+  type SandboxLoginRequest,
   type ValidateTokenRequest,
   type ValidateTokenResponse,
   IDENTITY_SERVICE_NAME,
@@ -42,5 +43,10 @@ export class AuthController {
   @GrpcMethod(IDENTITY_SERVICE_NAME, 'ValidateToken')
   async validateToken(data: ValidateTokenRequest): Promise<ValidateTokenResponse> {
     return this.authService.validateToken(data.token);
+  }
+
+  @GrpcMethod(IDENTITY_SERVICE_NAME, 'SandboxLogin')
+  async sandboxLogin(data: SandboxLoginRequest): Promise<AuthResponse> {
+    return this.authService.sandboxLogin(data.walletAddress, data.role);
   }
 }

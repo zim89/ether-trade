@@ -35,6 +35,13 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   JWT_SECRET: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(120000)
+  @IsOptional()
+  GRPC_DEFAULT_DEADLINE_MS: number = ENV_DEFAULTS.grpcDefaultDeadlineMs;
 }
 
 /**

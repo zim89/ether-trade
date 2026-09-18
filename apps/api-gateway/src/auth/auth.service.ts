@@ -1,8 +1,12 @@
 import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { firstValueFrom } from 'rxjs';
-import { UserRole } from '@app/common/constants';
+import { ConfigService } from '@nestjs/config';
+import { CONFIG_NAMESPACES, UserRole } from '@app/common/constants';
 import { PROTO_SERVICES } from '@app/contracts';
 import type { IdentityServiceClient } from '@app/contracts';
+import { createGatewayGrpcMetadata } from '../common/constants/grpc.constants';
+import { getCorrelationId } from '../common/utils/correlation-context';
+import { grpcUnaryCall } from '../common/utils/grpc-call.util';
+import type { GatewayConfig } from '../config/config.types';
 import {
   AuthResponseDto,
   GetNonceQueryDto,
@@ -20,18 +24,29 @@ export interface AuthResult {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly grpcDeadlineMs: number;
 
   constructor(
     @Inject(PROTO_SERVICES.identity)
-    private readonly identityService: IdentityServiceClient,
-  ) {}
+    private readonly identityGrpcClient: IdentityServiceClient,
+    private readonly configService: ConfigService,
+  ) {
+    this.grpcDeadlineMs =
+      this.configService.get<GatewayConfig>(CONFIG_NAMESPACES.gateway)?.grpcDefaultDeadlineMs ??
+      5000;
+  }
+
+  private metadata(callerUserId?: string) {
+    return createGatewayGrpcMetadata(getCorrelationId() ?? 'unknown', callerUserId);
+  }
 
   /**
    * Requests a cryptographic single-use nonce for wallet SIWE signing.
    */
   async getNonce(query: GetNonceQueryDto): Promise<GetNonceResponseDto> {
-    const response = await firstValueFrom(
-      this.identityService.getNonce({ walletAddress: query.walletAddress }),
+    const response = await grpcUnaryCall(
+      this.identityGrpcClient.getNonce({ walletAddress: query.walletAddress }, this.metadata()),
+      this.grpcDeadlineMs,
     );
 
     return {
@@ -44,11 +59,15 @@ export class AuthService {
    * Verifies EIP-4361 signature, authenticates or registers the user, and issues tokens.
    */
   async verifySiwe(dto: VerifySiweDto): Promise<AuthResult> {
-    const response = await firstValueFrom(
-      this.identityService.verifySiwe({
-        message: dto.message,
-        signature: dto.signature,
-      }),
+    const response = await grpcUnaryCall(
+      this.identityGrpcClient.verifySiwe(
+        {
+          message: dto.message,
+          signature: dto.signature,
+        },
+        this.metadata(),
+      ),
+      this.grpcDeadlineMs,
     );
 
     if (!response.user) {
@@ -79,7 +98,10 @@ export class AuthService {
       throw new UnauthorizedException('Missing refresh token');
     }
 
-    const response = await firstValueFrom(this.identityService.refreshTokens({ refreshToken }));
+    const response = await grpcUnaryCall(
+      this.identityGrpcClient.refreshTokens({ refreshToken }, this.metadata()),
+      this.grpcDeadlineMs,
+    );
 
     if (!response.user) {
       throw new UnauthorizedException('Refresh succeeded but user profile was not returned');
@@ -109,11 +131,15 @@ export class AuthService {
       return { success: true };
     }
 
-    const response = await firstValueFrom(
-      this.identityService.logout({
-        refreshToken: refreshToken ?? '',
-        userId: userId ?? '',
-      }),
+    const response = await grpcUnaryCall(
+      this.identityGrpcClient.logout(
+        {
+          refreshToken: refreshToken ?? '',
+          userId: userId ?? '',
+        },
+        this.metadata(userId),
+      ),
+      this.grpcDeadlineMs,
     );
 
     return {
@@ -125,7 +151,10 @@ export class AuthService {
    * Retrieves profile of currently authenticated user by ID.
    */
   async getMe(userId: string): Promise<UserProfileDto> {
-    const response = await firstValueFrom(this.identityService.getUserById({ userId }));
+    const response = await grpcUnaryCall(
+      this.identityGrpcClient.getUserById({ userId }, this.metadata(userId)),
+      this.grpcDeadlineMs,
+    );
 
     return {
       id: response.id,

@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { getAddress, isAddress } from 'viem';
+import { UserRole } from '@app/common/constants';
 import { User } from '../database/schema/users.schema';
-import { USERS_ERRORS, USERS_LOGS } from './users.constants';
+import { USERS_ERROR_CODES, USERS_ERRORS, USERS_LOGS } from './users.constants';
 import { UsersRepository } from './users.repository';
 
 /**
@@ -25,7 +26,10 @@ export class UsersService {
    */
   normalizeAddress(address: string): string {
     if (!address || !isAddress(address)) {
-      throw new BadRequestException(USERS_ERRORS.invalidWalletAddress(address));
+      throw new BadRequestException({
+        message: USERS_ERRORS.invalidWalletAddress(address),
+        errorCode: USERS_ERROR_CODES.invalidWalletAddress,
+      });
     }
     return getAddress(address);
   }
@@ -39,7 +43,10 @@ export class UsersService {
   async findById(id: string): Promise<User> {
     const user = await this.usersRepository.findById(id);
     if (!user) {
-      throw new NotFoundException(USERS_ERRORS.userNotFoundById(id));
+      throw new NotFoundException({
+        message: USERS_ERRORS.userNotFoundById(id),
+        errorCode: USERS_ERROR_CODES.userNotFound,
+      });
     }
     return user;
   }
@@ -54,7 +61,10 @@ export class UsersService {
     const normalized = this.normalizeAddress(walletAddress);
     const user = await this.usersRepository.findByWalletAddress(normalized);
     if (!user) {
-      throw new NotFoundException(USERS_ERRORS.userNotFoundByAddress(normalized));
+      throw new NotFoundException({
+        message: USERS_ERRORS.userNotFoundByAddress(normalized),
+        errorCode: USERS_ERROR_CODES.userNotFound,
+      });
     }
     return user;
   }
@@ -72,5 +82,23 @@ export class UsersService {
       this.logger.log(USERS_LOGS.userRegistered(normalized, result.user.id));
     }
     return result;
+  }
+
+  /**
+   * Updates the role of an existing user.
+   *
+   * @param id - User UUID
+   * @param role - Target role to assign
+   * @throws {NotFoundException} If user does not exist
+   */
+  async updateRole(id: string, role: UserRole): Promise<User> {
+    const user = await this.usersRepository.updateRole(id, role);
+    if (!user) {
+      throw new NotFoundException({
+        message: USERS_ERRORS.userNotFoundById(id),
+        errorCode: USERS_ERROR_CODES.userNotFound,
+      });
+    }
+    return user;
   }
 }

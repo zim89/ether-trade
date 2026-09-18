@@ -34,4 +34,10 @@ export class ErrorResponseDto {
     description: 'Request path that triggered the error',
   })
   path: string;
+
+  @ApiPropertyOptional({
+    example: 'INSUFFICIENT_BALANCE',
+    description: 'Stable machine-readable error code (may be omitted until fully rolled out)',
+  })
+  errorCode?: string;
 }

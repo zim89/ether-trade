@@ -8,4 +8,5 @@ export interface GatewayConfig {
   jwtSecret: string;
   identityGrpcUrl: string;
   accountsGrpcUrl: string;
+  grpcDefaultDeadlineMs: number;
 }

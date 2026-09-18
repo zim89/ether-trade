@@ -26,7 +26,7 @@
   - `common/`: Service-local shared code. Scoped barrels only (`common/constants/index.ts`, `common/guards/index.ts`, `common/types/index.ts`, `common/utils/index.ts`). **No root `common/index.ts`** to avoid circular dependencies and enforce explicit imports.
   - **No Re-exports of Shared Libraries:** Service-local files (e.g., `apps/<service>/src/common/constants/*.ts`) MUST NEVER re-export symbols (constants, types, enums, utils) imported from `@app/common/*` or `@app/contracts/*`. Consumers must import shared symbols directly from their authoritative library packages (`import { X } from '@app/common/constants'`). Local re-exports obscure the true origin of symbols, create ambiguity in auto-imports, and introduce unnecessary coupling.
   - `config/`: NestJS `@nestjs/config` loaders (`*.config.ts`), `env.validation.ts` (`class-validator`), `config.types.ts`. All constants are imported from `../common/constants`.
-  - `<feature>/`: Domain modules (controllers, services, repositories).
+  - `<feature>/`: Domain modules (controllers, services, repositories). Flat structure by default («folder by cardinality 3+»). Single-child folders (`decorators/`, `guards/`, `strategies/`) are prohibited. Feature OpenAPI documentation lives in `<feature>.swagger.ts`.
   - `database/`: Service-local Drizzle database module.
   - `<service>.module.ts`: Root application module.
   - `main.ts`: Service bootstrap entrypoint.
@@ -38,8 +38,12 @@
 - **Strict Isolation:** Each microservice (`apps/<service>`) connects to its own dedicated logical database (`identity_db`, `accounts_db`, `orders_db`).
 - **No Cross-Database Joins or FKs:** Cross-service references must use UUID/identifiers only, resolved via gRPC calls or Kafka events.
 - **Drizzle Kit:** Each app maintains its own `drizzle.config.ts` and migration folder:
-  - Generate migrations: `pnpm run migration:generate --name=<name>` (or scoped script per service).
+  - Generate migrations: `pnpm db:generate:<service>` / `pnpm db:generate`.
+  - Apply migrations: `pnpm db:migrate:<service>` / `pnpm db:migrate`.
   - Use SQL-first query building with explicit type safety.
+- **Repository policy:** Repositories return entities / `null` / discriminated result objects. They MUST NOT throw NestJS `HttpException`. Transport exceptions are thrown in the Service layer.
+- **Money:** Use `bignumber.js` for balance arithmetic (`numeric` + TypeScript `string`). Never use JS `Number` for money.
+- **Idempotency (MVP):** Money mutations require `idempotencyKey`. Replay is backed by unique `ledger_transactions.idempotency_key` (full `idempotency_records` table is deferred).
 
 ---
 
@@ -48,8 +52,13 @@
 - **East-West (Internal):** gRPC using `@nestjs/microservices` and `@grpc/grpc-js`.
   - Service contracts live in `libs/contracts/proto/*.proto`.
   - Always update `.proto` files and run codegen (`pnpm run proto:generate`) when modifying RPC contracts.
+  - Proto codegen uses `addGrpcMetadata=true` so clients accept `metadata?: Metadata`.
+  - API Gateway must attach M2M metadata (`x-service-id`, `x-correlation-id`, optional `x-caller-id`) on every outbound call via `createGatewayGrpcMetadata`.
+  - Client deadlines: RxJS `timeout(GRPC_DEFAULT_DEADLINE_MS)` via `grpcUnaryCall` (ts-proto Nest clients have no `CallOptions.deadline`).
+  - Sensitive Accounts RPCs (`DepositSandboxFunds`, `LockBalance`, `UnlockBalance`) enforce Soft-Trust allowlist on `x-service-id`.
 - **Asynchronous Events:** Apache Kafka with Transactional Outbox pattern for mission-critical domain events.
 - **Cache & Fast-Path:** Valkey / Redis with `@valkey/valkey-glide` or `ioredis`.
+- **Errors:** Follow `_docs-project/backend/core/error-handling.md`. Prefer `{ message, errorCode }` on HttpException bodies; filters propagate `errorCode` through gRPC `details` JSON to HTTP responses.
 
 ---
 
@@ -71,4 +80,3 @@
 - **Validation Engine:** All microservices (`apps/*`) must use `class-validator` and `class-transformer` via `config/env.validation.ts` (`EnvironmentVariables` DTO + `validateEnvironment()` passed to `ConfigModule.forRoot({ validate: validateEnvironment })`). Using or installing `joi` is strictly forbidden across the monorepo.
 - **Namespaced Configs:** Domain configurations must be structured into `registerAs` factory loaders (`app.config.ts`, `database.config.ts`, etc.) and consumed via strongly typed `ConfigService<AppConfig, true>`.
 - **No Hardcoded Secrets:** Sensitive credentials (`JWT_SECRET`, `DB_PASSWORD`, `REFRESH_TOKEN_SECRET`) must never have default fallback values in any environment (dev, test, prod). Missing secrets must immediately abort startup.
-

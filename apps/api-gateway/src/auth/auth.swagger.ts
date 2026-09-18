@@ -8,8 +8,8 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { ErrorResponseDto } from '../../common/dto';
-import { AuthResponseDto, GetNonceResponseDto, LogoutResponseDto, UserProfileDto } from '../dto';
+import { ErrorResponseDto } from '../common/dto';
+import { AuthResponseDto, GetNonceResponseDto, LogoutResponseDto, UserProfileDto } from './dto';
 
 export const AuthDocs = {
   controller: () => applyDecorators(ApiTags('Authentication')),

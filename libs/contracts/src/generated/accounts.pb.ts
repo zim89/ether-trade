@@ -5,6 +5,7 @@
 // source: accounts.proto
 
 /* eslint-disable */
+import type { Metadata } from "@grpc/grpc-js";
 import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
 import { Observable } from "rxjs";
 
@@ -60,40 +61,48 @@ export const ACCOUNTS_PACKAGE_NAME = "accounts";
 export interface AccountsServiceClient {
   /** Returns the account for (user_id, currency), creating a zero-balance row if missing */
 
-  getBalance(request: GetBalanceRequest): Observable<BalanceResponse>;
+  getBalance(request: GetBalanceRequest, metadata?: Metadata): Observable<BalanceResponse>;
 
   /** Credits sandbox USDT to available_balance (dev/sandbox faucet) */
 
-  depositSandboxFunds(request: DepositSandboxFundsRequest): Observable<BalanceResponse>;
+  depositSandboxFunds(request: DepositSandboxFundsRequest, metadata?: Metadata): Observable<BalanceResponse>;
 
   /** Moves funds available → locked (reserve for an order) */
 
-  lockBalance(request: LockBalanceRequest): Observable<BalanceResponse>;
+  lockBalance(request: LockBalanceRequest, metadata?: Metadata): Observable<BalanceResponse>;
 
   /** Moves funds locked → available (release reserve) */
 
-  unlockBalance(request: UnlockBalanceRequest): Observable<BalanceResponse>;
+  unlockBalance(request: UnlockBalanceRequest, metadata?: Metadata): Observable<BalanceResponse>;
 }
 
 export interface AccountsServiceController {
   /** Returns the account for (user_id, currency), creating a zero-balance row if missing */
 
-  getBalance(request: GetBalanceRequest): Promise<BalanceResponse> | Observable<BalanceResponse> | BalanceResponse;
+  getBalance(
+    request: GetBalanceRequest,
+    metadata?: Metadata,
+  ): Promise<BalanceResponse> | Observable<BalanceResponse> | BalanceResponse;
 
   /** Credits sandbox USDT to available_balance (dev/sandbox faucet) */
 
   depositSandboxFunds(
     request: DepositSandboxFundsRequest,
+    metadata?: Metadata,
   ): Promise<BalanceResponse> | Observable<BalanceResponse> | BalanceResponse;
 
   /** Moves funds available → locked (reserve for an order) */
 
-  lockBalance(request: LockBalanceRequest): Promise<BalanceResponse> | Observable<BalanceResponse> | BalanceResponse;
+  lockBalance(
+    request: LockBalanceRequest,
+    metadata?: Metadata,
+  ): Promise<BalanceResponse> | Observable<BalanceResponse> | BalanceResponse;
 
   /** Moves funds locked → available (release reserve) */
 
   unlockBalance(
     request: UnlockBalanceRequest,
+    metadata?: Metadata,
   ): Promise<BalanceResponse> | Observable<BalanceResponse> | BalanceResponse;
 }
 

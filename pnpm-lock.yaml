@@ -202,6 +202,9 @@ importers:
       argon2:
         specifier: ^0.45.1
         version: 0.45.1
+      bignumber.js:
+        specifier: ^11.1.5
+        version: 11.1.5
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2279,6 +2282,9 @@ packages:
     resolution: {integrity: sha512-hYrgxie335U08WqICoGqKRzV1HFXv6zdxwJE4ekCb80CM9a0SVVsN4QPwT67RraRo+9h8IATk6uxHJw7QSkdOg==}
     engines: {node: '>=6.0.0'}
     hasBin: true
+
+  bignumber.js@11.1.5:
+    resolution: {integrity: sha512-6WmzCNtUnfKpbozq+hOgWaZMMzORmYBwF1xZScyoIX3QRYWeKTtxxwDOW5tIz7C9BdjkIYHGTcelCLkXg0mndw==}
 
   bl@4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
@@ -6613,6 +6619,8 @@ snapshots:
   base64-js@1.5.1: {}
 
   baseline-browser-mapping@2.11.24: {}
+
+  bignumber.js@11.1.5: {}
 
   bl@4.1.0:
     dependencies:

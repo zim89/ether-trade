@@ -4,8 +4,8 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UserRole } from '@app/common/constants';
 import type { JwtPayload } from '@app/common/types';
-import { ENV_KEYS } from '../../common/constants';
-import type { CurrentUserData } from '../../common/decorators';
+import { ENV_KEYS } from '../common/constants';
+import type { CurrentUserData } from '../common/decorators';
 
 /**
  * Passport strategy validating signed JWT access tokens locally.

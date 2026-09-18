@@ -17,7 +17,7 @@ async function bootstrap() {
   const logger = new Logger(LOGGER_CONTEXTS.accountsBootstrap);
 
   /*
-   * 1. Preload & validate environment variables before IoC assembly (fail-fast).
+   * Preload & validate environment variables before IoC assembly (fail-fast).
    */
   const env = loadAndValidateEnv(EnvironmentVariables);
 

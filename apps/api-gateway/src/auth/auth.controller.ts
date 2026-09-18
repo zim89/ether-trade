@@ -19,7 +19,7 @@ import type { CurrentUserData } from '../common/decorators';
 import { JwtAuthGuard } from '../common/guards';
 import { GatewayConfig } from '../config';
 import { AuthService } from './auth.service';
-import { AuthDocs } from './decorators';
+import { AuthDocs } from './auth.swagger';
 import {
   AuthResponseDto,
   GetNonceQueryDto,

@@ -10,7 +10,7 @@ export const ROLES_KEY = 'roles';
  * ```typescript
  * @Roles(UserRole.ADMIN)
  * @UseGuards(JwtAuthGuard, RolesGuard)
- * @Post('promote-admin')
+ * @Post('promote-to-admin')
  * promote() {}
  * ```
  */

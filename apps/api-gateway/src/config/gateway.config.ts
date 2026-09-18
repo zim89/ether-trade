@@ -11,4 +11,7 @@ export const gatewayConfig = registerAs(CONFIG_NAMESPACES.gateway, (): GatewayCo
   jwtSecret: process.env[ENV_KEYS.jwtSecret] ?? '',
   identityGrpcUrl: process.env[ENV_KEYS.identityGrpcUrl] ?? ENV_DEFAULTS.identityGrpcUrl,
   accountsGrpcUrl: process.env[ENV_KEYS.accountsGrpcUrl] ?? ENV_DEFAULTS.accountsGrpcUrl,
+  grpcDefaultDeadlineMs: process.env[ENV_KEYS.grpcDefaultDeadlineMs]
+    ? Number(process.env[ENV_KEYS.grpcDefaultDeadlineMs])
+    : ENV_DEFAULTS.grpcDefaultDeadlineMs,
 }));

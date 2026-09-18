@@ -2,6 +2,7 @@ import { status as GrpcStatus } from '@grpc/grpc-js';
 import { Catch, RpcExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { Observable, throwError } from 'rxjs';
+import { extractErrorCode, parseErrorDetails, serializeErrorDetails } from '../utils';
 
 /**
  * Global exception filter for gRPC microservices.
@@ -23,16 +24,37 @@ export class GrpcExceptionFilter implements RpcExceptionFilter<unknown> {
   catch(exception: unknown): Observable<never> {
     let code = GrpcStatus.INTERNAL;
     let message: string | string[] = 'Internal server error';
-    let details: unknown = undefined;
+    let errorCode: string | undefined;
 
     if (exception instanceof RpcException) {
       const error: unknown = exception.getError();
       if (typeof error === 'object' && error !== null) {
-        return throwError(() => error);
+        const rpcError = error as {
+          code?: number;
+          message?: string | string[];
+          details?: string;
+          errorCode?: string;
+        };
+        const normalizedMessage = rpcError.message ?? 'Internal server error';
+        const normalizedCode =
+          typeof rpcError.code === 'number' ? rpcError.code : GrpcStatus.INTERNAL;
+        const fromDetails = rpcError.details
+          ? parseErrorDetails(rpcError.details)?.errorCode
+          : undefined;
+        const normalizedErrorCode = extractErrorCode(rpcError) ?? fromDetails;
+
+        return throwError(() => ({
+          code: normalizedCode,
+          message: Array.isArray(normalizedMessage)
+            ? normalizedMessage.join('; ')
+            : normalizedMessage,
+          details: serializeErrorDetails(normalizedMessage, normalizedErrorCode),
+        }));
       }
       return throwError(() => ({
         code: GrpcStatus.INTERNAL,
         message: String(error),
+        details: serializeErrorDetails(String(error)),
       }));
     }
 
@@ -45,10 +67,10 @@ export class GrpcExceptionFilter implements RpcExceptionFilter<unknown> {
       } else if (typeof response === 'object' && response !== null && 'message' in response) {
         const responseBody = response as { message?: string | string[] };
         message = responseBody.message ?? exception.message;
+        errorCode = extractErrorCode(response);
       } else {
         message = exception.message;
       }
-      details = typeof response === 'object' && response !== null ? response : undefined;
 
       switch (httpStatus) {
         case HttpStatus.BAD_REQUEST:
@@ -81,7 +103,7 @@ export class GrpcExceptionFilter implements RpcExceptionFilter<unknown> {
     return throwError(() => ({
       code,
       message: Array.isArray(message) ? message.join('; ') : message,
-      details: details ? JSON.stringify(details) : undefined,
+      details: serializeErrorDetails(message, errorCode),
     }));
   }
 }

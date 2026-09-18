@@ -12,7 +12,7 @@ import type { DrizzleDB } from '../database/database.module';
 import { refreshTokens } from '../database/schema/refresh-tokens.schema';
 import { User } from '../database/schema/users.schema';
 import { UsersService } from '../users/users.service';
-import { AUTH_ERRORS, AUTH_LOGS } from './auth.constants';
+import { AUTH_ERROR_CODES, AUTH_ERRORS, AUTH_LOGS } from './auth.constants';
 import { GeneratedTokens } from './auth.types';
 
 /**
@@ -91,7 +91,10 @@ export class TokenService {
    */
   async rotateTokens(rawRefreshToken: string): Promise<{ tokens: GeneratedTokens; user: User }> {
     if (!rawRefreshToken) {
-      throw new UnauthorizedException(AUTH_ERRORS.refreshTokenRequired);
+      throw new UnauthorizedException({
+        message: AUTH_ERRORS.refreshTokenRequired,
+        errorCode: AUTH_ERROR_CODES.refreshTokenRequired,
+      });
     }
 
     // Query active and valid tokens
@@ -107,19 +110,28 @@ export class TokenService {
     }
 
     if (!matchedTokenRecord) {
-      throw new UnauthorizedException(AUTH_ERRORS.invalidRefreshToken);
+      throw new UnauthorizedException({
+        message: AUTH_ERRORS.invalidRefreshToken,
+        errorCode: AUTH_ERROR_CODES.invalidRefreshToken,
+      });
     }
 
     // Reuse Detection: If token is already revoked, revoke ALL tokens for this user
     if (matchedTokenRecord.isRevoked) {
       this.logger.warn(AUTH_LOGS.revokedTokenReuseDetected(matchedTokenRecord.userId));
       await this.revokeAllUserTokens(matchedTokenRecord.userId);
-      throw new UnauthorizedException(AUTH_ERRORS.tokenReuseDetected);
+      throw new UnauthorizedException({
+        message: AUTH_ERRORS.tokenReuseDetected,
+        errorCode: AUTH_ERROR_CODES.tokenReuseDetected,
+      });
     }
 
     // Check expiration
     if (new Date() > matchedTokenRecord.expiresAt) {
-      throw new UnauthorizedException(AUTH_ERRORS.refreshTokenExpired);
+      throw new UnauthorizedException({
+        message: AUTH_ERRORS.refreshTokenExpired,
+        errorCode: AUTH_ERROR_CODES.refreshTokenExpired,
+      });
     }
 
     // Revoke old token
@@ -192,7 +204,10 @@ export class TokenService {
       });
       return payload;
     } catch {
-      throw new UnauthorizedException(AUTH_ERRORS.invalidAccessToken);
+      throw new UnauthorizedException({
+        message: AUTH_ERRORS.invalidAccessToken,
+        errorCode: AUTH_ERROR_CODES.invalidAccessToken,
+      });
     }
   }
 }

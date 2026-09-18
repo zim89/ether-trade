@@ -2,6 +2,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
 import { COMMON_LOGS, LOGGER_CONTEXTS } from '@app/common/constants';
+import { HttpExceptionFilter } from '@app/common/filters';
 import { loadAndValidateEnv } from '@app/common/utils';
 import { AppModule } from './app.module';
 import { API_GATEWAY_CONSTANTS } from './common/constants';
@@ -36,7 +37,10 @@ async function bootstrap() {
     }),
   );
 
-  // 5. OpenAPI / Swagger documentation
+  // 5. Global HTTP exception filter (unified gRPC and HTTP error response schema)
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // 6. OpenAPI / Swagger documentation
   const swaggerPath = setupSwagger(app);
 
   app.enableShutdownHooks();
