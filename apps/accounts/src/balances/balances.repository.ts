@@ -1,4 +1,5 @@
-import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import BigNumber from 'bignumber.js';
 import { and, eq, sql } from 'drizzle-orm';
 import {
   Currency,
@@ -15,12 +16,20 @@ import {
   LedgerTransaction,
 } from '../database/schema/ledger-transactions.schema';
 import { BALANCES_ERRORS } from './balances.constants';
-import type { DepositParams, LockParams, UnlockParams } from './balances.types';
+import type {
+  BalanceMutationResult,
+  DepositParams,
+  ExpectedLedgerType,
+  LockParams,
+  UnlockParams,
+} from './balances.types';
 
 /**
  * Data access repository for the `accounts` and `ledger_transactions` tables.
  * Performs critical balance operations with pessimistic locking (SELECT ... FOR UPDATE)
  * and ensures append-only ledger transaction recording.
+ *
+ * Does not throw NestJS transport exceptions — returns discriminated result objects.
  */
 @Injectable()
 export class BalancesRepository {
@@ -88,35 +97,21 @@ export class BalancesRepository {
 
   /**
    * Credits funds to an account's available balance in an atomic transaction.
-   * Creates the account if it does not exist, locks it with FOR UPDATE,
-   * updates the balance, and logs to ledger_transactions.
    */
-  async deposit(params: DepositParams): Promise<Account> {
+  async deposit(params: DepositParams): Promise<BalanceMutationResult> {
     const { userId, currency, amount, idempotencyKey } = params;
 
     return await this.db.transaction(async (tx) => {
-      // 1. Check idempotency if key provided
-      if (idempotencyKey) {
-        const [existingTx] = await tx
-          .select()
-          .from(ledgerTransactions)
-          .where(eq(ledgerTransactions.idempotencyKey, idempotencyKey))
-          .limit(1);
-
-        if (existingTx) {
-          const [currentAccount] = await tx
-            .select()
-            .from(accounts)
-            .where(eq(accounts.id, existingTx.accountId))
-            .limit(1);
-
-          if (currentAccount) {
-            return currentAccount;
-          }
-        }
+      const replay = await this.resolveIdempotencyReplay(tx, {
+        idempotencyKey,
+        amount,
+        currency,
+        expectedType: LedgerTransactionType.DEPOSIT,
+      });
+      if (replay) {
+        return replay;
       }
 
-      // 2. Lock account or create if missing
       let [account] = await tx
         .select()
         .from(accounts)
@@ -136,7 +131,6 @@ export class BalancesRepository {
             .returning();
           account = created;
         } catch {
-          // In case another transaction created it simultaneously
           const [lockedAccount] = await tx
             .select()
             .from(accounts)
@@ -146,7 +140,10 @@ export class BalancesRepository {
         }
       }
 
-      // 3. Update account available balance
+      if (!account) {
+        return { status: 'not_found' };
+      }
+
       const [updatedAccount] = await tx
         .update(accounts)
         .set({
@@ -156,7 +153,6 @@ export class BalancesRepository {
         .where(eq(accounts.id, account.id))
         .returning();
 
-      // 4. Record ledger transaction
       try {
         await tx.insert(ledgerTransactions).values({
           accountId: updatedAccount.id,
@@ -169,63 +165,45 @@ export class BalancesRepository {
           lockedDelta: '0',
           balanceAfterAvailable: updatedAccount.availableBalance,
           balanceAfterLocked: updatedAccount.lockedBalance,
-          idempotencyKey: idempotencyKey || null,
+          idempotencyKey,
           referenceId: null,
         });
       } catch (err: unknown) {
-        if (
-          idempotencyKey &&
-          typeof err === 'object' &&
-          err !== null &&
-          'code' in err &&
-          (err as { code: string }).code === PG_ERROR_CODES.uniqueViolation
-        ) {
-          // Unique violation on idempotency_key due to concurrent request
-          const [currentAccount] = await tx
-            .select()
-            .from(accounts)
-            .where(eq(accounts.id, updatedAccount.id))
-            .limit(1);
-          return currentAccount || updatedAccount;
+        if (this.isIdempotencyUniqueViolation(err)) {
+          const concurrentReplay = await this.resolveIdempotencyReplay(tx, {
+            idempotencyKey,
+            amount,
+            currency,
+            expectedType: LedgerTransactionType.DEPOSIT,
+          });
+          if (concurrentReplay) {
+            return concurrentReplay;
+          }
         }
         throw err;
       }
 
-      return updatedAccount;
+      return { status: 'ok', account: updatedAccount };
     });
   }
 
   /**
    * Locks funds from available balance to locked balance in an atomic transaction.
-   * Locks the account row with FOR UPDATE, verifies sufficient available funds,
-   * updates the balances, and logs to ledger_transactions.
    */
-  async lock(params: LockParams): Promise<Account> {
+  async lock(params: LockParams): Promise<BalanceMutationResult> {
     const { userId, currency, amount, idempotencyKey, referenceId } = params;
 
     return await this.db.transaction(async (tx) => {
-      // 1. Check idempotency if key provided
-      if (idempotencyKey) {
-        const [existingTx] = await tx
-          .select()
-          .from(ledgerTransactions)
-          .where(eq(ledgerTransactions.idempotencyKey, idempotencyKey))
-          .limit(1);
-
-        if (existingTx) {
-          const [currentAccount] = await tx
-            .select()
-            .from(accounts)
-            .where(eq(accounts.id, existingTx.accountId))
-            .limit(1);
-
-          if (currentAccount) {
-            return currentAccount;
-          }
-        }
+      const replay = await this.resolveIdempotencyReplay(tx, {
+        idempotencyKey,
+        amount,
+        currency,
+        expectedType: LedgerTransactionType.LOCK,
+      });
+      if (replay) {
+        return replay;
       }
 
-      // 2. Lock account with FOR UPDATE
       const [account] = await tx
         .select()
         .from(accounts)
@@ -233,10 +211,9 @@ export class BalancesRepository {
         .for(PG_LOCK_STRENGTH.update);
 
       if (!account) {
-        throw new NotFoundException(BALANCES_ERRORS.accountNotFound(userId, currency));
+        return { status: 'not_found' };
       }
 
-      // 3. Atomically check and update available -> locked
       const [updatedAccount] = await tx
         .update(accounts)
         .set({
@@ -250,12 +227,12 @@ export class BalancesRepository {
         .returning();
 
       if (!updatedAccount) {
-        throw new BadRequestException(
-          BALANCES_ERRORS.insufficientAvailableBalance(account.availableBalance, amount),
-        );
+        return {
+          status: 'insufficient_available',
+          available: account.availableBalance,
+        };
       }
 
-      // 4. Record ledger transaction
       try {
         await tx.insert(ledgerTransactions).values({
           accountId: updatedAccount.id,
@@ -268,62 +245,45 @@ export class BalancesRepository {
           lockedDelta: amount,
           balanceAfterAvailable: updatedAccount.availableBalance,
           balanceAfterLocked: updatedAccount.lockedBalance,
-          idempotencyKey: idempotencyKey || null,
+          idempotencyKey,
           referenceId: referenceId || null,
         });
       } catch (err: unknown) {
-        if (
-          idempotencyKey &&
-          typeof err === 'object' &&
-          err !== null &&
-          'code' in err &&
-          (err as { code: string }).code === PG_ERROR_CODES.uniqueViolation
-        ) {
-          const [currentAccount] = await tx
-            .select()
-            .from(accounts)
-            .where(eq(accounts.id, updatedAccount.id))
-            .limit(1);
-          return currentAccount || updatedAccount;
+        if (this.isIdempotencyUniqueViolation(err)) {
+          const concurrentReplay = await this.resolveIdempotencyReplay(tx, {
+            idempotencyKey,
+            amount,
+            currency,
+            expectedType: LedgerTransactionType.LOCK,
+          });
+          if (concurrentReplay) {
+            return concurrentReplay;
+          }
         }
         throw err;
       }
 
-      return updatedAccount;
+      return { status: 'ok', account: updatedAccount };
     });
   }
 
   /**
    * Releases locked funds back to available balance in an atomic transaction.
-   * Locks the account row with FOR UPDATE, verifies sufficient locked funds,
-   * updates the balances, and logs to ledger_transactions.
    */
-  async unlock(params: UnlockParams): Promise<Account> {
+  async unlock(params: UnlockParams): Promise<BalanceMutationResult> {
     const { userId, currency, amount, idempotencyKey, referenceId } = params;
 
     return await this.db.transaction(async (tx) => {
-      // 1. Check idempotency if key provided
-      if (idempotencyKey) {
-        const [existingTx] = await tx
-          .select()
-          .from(ledgerTransactions)
-          .where(eq(ledgerTransactions.idempotencyKey, idempotencyKey))
-          .limit(1);
-
-        if (existingTx) {
-          const [currentAccount] = await tx
-            .select()
-            .from(accounts)
-            .where(eq(accounts.id, existingTx.accountId))
-            .limit(1);
-
-          if (currentAccount) {
-            return currentAccount;
-          }
-        }
+      const replay = await this.resolveIdempotencyReplay(tx, {
+        idempotencyKey,
+        amount,
+        currency,
+        expectedType: LedgerTransactionType.UNLOCK,
+      });
+      if (replay) {
+        return replay;
       }
 
-      // 2. Lock account with FOR UPDATE
       const [account] = await tx
         .select()
         .from(accounts)
@@ -331,10 +291,9 @@ export class BalancesRepository {
         .for(PG_LOCK_STRENGTH.update);
 
       if (!account) {
-        throw new NotFoundException(BALANCES_ERRORS.accountNotFound(userId, currency));
+        return { status: 'not_found' };
       }
 
-      // 3. Atomically check and update locked -> available
       const [updatedAccount] = await tx
         .update(accounts)
         .set({
@@ -348,12 +307,12 @@ export class BalancesRepository {
         .returning();
 
       if (!updatedAccount) {
-        throw new BadRequestException(
-          BALANCES_ERRORS.insufficientLockedBalance(account.lockedBalance, amount),
-        );
+        return {
+          status: 'insufficient_locked',
+          locked: account.lockedBalance,
+        };
       }
 
-      // 4. Record ledger transaction
       try {
         await tx.insert(ledgerTransactions).values({
           accountId: updatedAccount.id,
@@ -366,28 +325,74 @@ export class BalancesRepository {
           lockedDelta: `-${amount}`,
           balanceAfterAvailable: updatedAccount.availableBalance,
           balanceAfterLocked: updatedAccount.lockedBalance,
-          idempotencyKey: idempotencyKey || null,
+          idempotencyKey,
           referenceId: referenceId || null,
         });
       } catch (err: unknown) {
-        if (
-          idempotencyKey &&
-          typeof err === 'object' &&
-          err !== null &&
-          'code' in err &&
-          (err as { code: string }).code === PG_ERROR_CODES.uniqueViolation
-        ) {
-          const [currentAccount] = await tx
-            .select()
-            .from(accounts)
-            .where(eq(accounts.id, updatedAccount.id))
-            .limit(1);
-          return currentAccount || updatedAccount;
+        if (this.isIdempotencyUniqueViolation(err)) {
+          const concurrentReplay = await this.resolveIdempotencyReplay(tx, {
+            idempotencyKey,
+            amount,
+            currency,
+            expectedType: LedgerTransactionType.UNLOCK,
+          });
+          if (concurrentReplay) {
+            return concurrentReplay;
+          }
         }
         throw err;
       }
 
-      return updatedAccount;
+      return { status: 'ok', account: updatedAccount };
     });
+  }
+
+  private isIdempotencyUniqueViolation(err: unknown): boolean {
+    return (
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as { code: string }).code === PG_ERROR_CODES.uniqueViolation
+    );
+  }
+
+  private async resolveIdempotencyReplay(
+    tx: Parameters<Parameters<DrizzleDB['transaction']>[0]>[0],
+    params: {
+      idempotencyKey: string;
+      amount: string;
+      currency: Currency;
+      expectedType: ExpectedLedgerType;
+    },
+  ): Promise<BalanceMutationResult | null> {
+    const [existingTx] = await tx
+      .select()
+      .from(ledgerTransactions)
+      .where(eq(ledgerTransactions.idempotencyKey, params.idempotencyKey))
+      .limit(1);
+
+    if (!existingTx) {
+      return null;
+    }
+
+    const amountMatches = new BigNumber(existingTx.amount).eq(params.amount);
+    const currencyMatches = existingTx.currency === params.currency;
+    const typeMatches = existingTx.type === params.expectedType;
+
+    if (!amountMatches || !currencyMatches || !typeMatches) {
+      return { status: 'idempotency_payload_mismatch' };
+    }
+
+    const [currentAccount] = await tx
+      .select()
+      .from(accounts)
+      .where(eq(accounts.id, existingTx.accountId))
+      .limit(1);
+
+    if (!currentAccount) {
+      return { status: 'not_found' };
+    }
+
+    return { status: 'idempotent_replay', account: currentAccount };
   }
 }
