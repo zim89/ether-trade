@@ -3,19 +3,31 @@ import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { COMMON_LOGS, LOGGER_CONTEXTS } from '@app/common/constants';
 import { GrpcExceptionFilter } from '@app/common/filters';
-import { ACCOUNTS_PACKAGE_NAME } from '@app/contracts';
+import { loadAndValidateEnv } from '@app/common/utils';
+import {
+  ACCOUNTS_PACKAGE_NAME,
+  ACCOUNTS_SERVICE_NAME,
+  getServiceProtoPath,
+  GRPC_SERVICE_KEYS,
+} from '@app/contracts';
 import { AccountsModule } from './accounts.module';
-import { ACCOUNTS_GRPC, ACCOUNTS_PROTO_PATH, ENV_KEYS } from './common/constants';
+import { EnvironmentVariables } from './config';
 
 async function bootstrap() {
   const logger = new Logger(LOGGER_CONTEXTS.accountsBootstrap);
-  const grpcUrl = process.env[ENV_KEYS.accountsGrpcUrl] ?? ACCOUNTS_GRPC.defaultUrl;
+
+  /*
+   * Preload & validate environment variables before IoC assembly (fail-fast).
+   */
+  const env = loadAndValidateEnv(EnvironmentVariables);
+
+  const grpcUrl = env.ACCOUNTS_GRPC_URL;
 
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(AccountsModule, {
     transport: Transport.GRPC,
     options: {
       package: ACCOUNTS_PACKAGE_NAME,
-      protoPath: ACCOUNTS_PROTO_PATH,
+      protoPath: getServiceProtoPath(GRPC_SERVICE_KEYS.accounts),
       url: grpcUrl,
     },
   });
@@ -24,7 +36,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   await app.listen();
-  logger.log(COMMON_LOGS.bootstrap.grpcServiceRunning('Accounts', grpcUrl));
+  logger.log(COMMON_LOGS.bootstrap.grpcServiceRunning(ACCOUNTS_SERVICE_NAME, grpcUrl));
 }
 
 void bootstrap();

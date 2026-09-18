@@ -4,7 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import type { StringValue } from 'ms';
 import { CONFIG_NAMESPACES } from '@app/common/constants';
 import { AppConfig } from '../config';
-import { UsersModule } from '../users/users.module';
+import { UsersModule } from '../users';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { NonceService } from './nonce.service';
@@ -18,7 +18,7 @@ import { TokenService } from './token.service';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService<AppConfig, true>) => {
-        const authConf = configService.get(CONFIG_NAMESPACES.auth, { infer: true });
+        const authConf = configService.getOrThrow(CONFIG_NAMESPACES.auth, { infer: true });
         return {
           secret: authConf.jwtSecret,
           signOptions: {

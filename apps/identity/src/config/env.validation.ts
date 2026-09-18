@@ -68,6 +68,10 @@ export class EnvironmentVariables {
   JWT_EXPIRES_IN: string = ENV_DEFAULTS.jwtExpiresIn;
 }
 
-export function validate(config: Record<string, unknown>): EnvironmentVariables {
+/**
+ * Validates raw configuration dictionary against EnvironmentVariables schema.
+ * Passed to ConfigModule.forRoot({ validate: validateEnvironment }).
+ */
+export function validateEnvironment(config: Record<string, unknown>): EnvironmentVariables {
   return validateEnv(EnvironmentVariables, config);
 }

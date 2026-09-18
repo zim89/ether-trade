@@ -21,6 +21,12 @@ service IdentityService {
 
   // Internal token validation
   rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // Updates user role (admin/dev sandbox)
+  rpc UpdateUserRole (UpdateUserRoleRequest) returns (UserResponse);
+
+  // Sandbox login without cryptographic signature (dev/test environments only)
+  rpc SandboxLogin (SandboxLoginRequest) returns (AuthResponse);
 }
 
 message GetNonceRequest {
@@ -82,4 +88,14 @@ message ValidateTokenResponse {
   string user_id = 2;
   string wallet_address = 3;
   string role = 4;
+}
+
+message UpdateUserRoleRequest {
+  string user_id = 1;
+  string role = 2;
+}
+
+message SandboxLoginRequest {
+  string wallet_address = 1;
+  string role = 2;
 }

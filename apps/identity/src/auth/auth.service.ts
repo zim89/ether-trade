@@ -1,10 +1,11 @@
 import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { verifyMessage, Hex } from 'viem';
 import { parseSiweMessage } from 'viem/siwe';
+import { UserRole } from '@app/common/constants';
 import { AuthResponse, ValidateTokenResponse } from '@app/contracts';
 import { User } from '../database/schema/users.schema';
-import { UsersService } from '../users/users.service';
-import { AUTH_ERRORS, AUTH_LOGS } from './auth.constants';
+import { UsersService } from '../users';
+import { AUTH_ERROR_CODES, AUTH_ERRORS, AUTH_LOGS } from './auth.constants';
 import { GeneratedNonce, GeneratedTokens } from './auth.types';
 import { NonceService } from './nonce.service';
 import { TokenService } from './token.service';
@@ -53,13 +54,19 @@ export class AuthService {
    */
   async verifySiwe(rawMessage: string, signature: string): Promise<AuthResponse> {
     if (!rawMessage || !signature) {
-      throw new BadRequestException(AUTH_ERRORS.siweCredentialsRequired);
+      throw new BadRequestException({
+        message: AUTH_ERRORS.siweCredentialsRequired,
+        errorCode: AUTH_ERROR_CODES.siweCredentialsRequired,
+      });
     }
 
     // 1. Parse SIWE message
     const parsed = parseSiweMessage(rawMessage);
     if (!parsed || !parsed.address || !parsed.nonce) {
-      throw new BadRequestException(AUTH_ERRORS.malformedSiweMessage);
+      throw new BadRequestException({
+        message: AUTH_ERRORS.malformedSiweMessage,
+        errorCode: AUTH_ERROR_CODES.malformedSiweMessage,
+      });
     }
 
     const walletAddress = this.usersService.normalizeAddress(parsed.address);
@@ -67,25 +74,39 @@ export class AuthService {
     // 2. Validate expiration time if specified in message
     const now = new Date();
     if (parsed.expirationTime && now > parsed.expirationTime) {
-      throw new UnauthorizedException(AUTH_ERRORS.siweMessageExpired);
+      throw new UnauthorizedException({
+        message: AUTH_ERRORS.siweMessageExpired,
+        errorCode: AUTH_ERROR_CODES.siweMessageExpired,
+      });
     }
 
     // 3. Atomically validate & consume nonce (Replay protection)
     const isNonceValid = await this.nonceService.consumeNonce(walletAddress, parsed.nonce);
     if (!isNonceValid) {
-      throw new UnauthorizedException(AUTH_ERRORS.invalidNonce);
+      throw new UnauthorizedException({
+        message: AUTH_ERRORS.invalidNonce,
+        errorCode: AUTH_ERROR_CODES.invalidNonce,
+      });
     }
 
     // 4. Cryptographic signature verification
-    const isSignatureValid = await verifyMessage({
-      address: walletAddress as Hex,
-      message: rawMessage,
-      signature: signature as Hex,
-    });
+    let isSignatureValid = false;
+    try {
+      isSignatureValid = await verifyMessage({
+        address: walletAddress as Hex,
+        message: rawMessage,
+        signature: signature as Hex,
+      });
+    } catch {
+      isSignatureValid = false;
+    }
 
     if (!isSignatureValid) {
       this.logger.warn(AUTH_LOGS.signatureVerificationFailed(walletAddress));
-      throw new UnauthorizedException(AUTH_ERRORS.invalidSignature);
+      throw new UnauthorizedException({
+        message: AUTH_ERRORS.invalidSignature,
+        errorCode: AUTH_ERROR_CODES.invalidSignature,
+      });
     }
 
     // 5. Find or register user
@@ -117,7 +138,10 @@ export class AuthService {
    */
   async logout(refreshToken: string, userId?: string): Promise<boolean> {
     if (!refreshToken) {
-      throw new BadRequestException(AUTH_ERRORS.refreshTokenRequired);
+      throw new BadRequestException({
+        message: AUTH_ERRORS.refreshTokenRequired,
+        errorCode: AUTH_ERROR_CODES.refreshTokenRequired,
+      });
     }
     return this.tokenService.revokeToken(refreshToken, userId);
   }
@@ -144,6 +168,27 @@ export class AuthService {
         role: '',
       };
     }
+  }
+
+  /**
+   * Generates authentication tokens directly without cryptographic signature.
+   * Strictly intended for developer sandbox and test environments.
+   *
+   * @param walletAddress - EVM wallet address to log in as (defaults to Hardhat #0)
+   * @param role - Optional role to assign (e.g. TRADER or ADMIN)
+   */
+  async sandboxLogin(walletAddress?: string, role?: string): Promise<AuthResponse> {
+    const DEFAULT_DEV_WALLET = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+    const address = this.usersService.normalizeAddress(walletAddress || DEFAULT_DEV_WALLET);
+
+    let { user } = await this.usersService.findOrCreate(address);
+
+    if (role && user.role !== (role as UserRole)) {
+      user = await this.usersService.updateRole(user.id, role as UserRole);
+    }
+
+    const tokens = await this.tokenService.generateTokens(user);
+    return this.mapToAuthResponse(tokens, user);
   }
 
   /**

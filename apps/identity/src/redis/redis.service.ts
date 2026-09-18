@@ -25,7 +25,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * Initializes the Redis/Valkey GLIDE client connection.
    */
   private async initClient(): Promise<void> {
-    const redisConf = this.configService.get(CONFIG_NAMESPACES.redis, { infer: true });
+    const redisConf = this.configService.getOrThrow(CONFIG_NAMESPACES.redis, { infer: true });
     const host = redisConf.host;
     const port = redisConf.port;
     const password = redisConf.password;
