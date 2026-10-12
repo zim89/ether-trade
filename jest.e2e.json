@@ -1,0 +1,37 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "roots": ["<rootDir>/test/e2e/"],
+  "testRegex": ".*\\.e2e-spec\\.ts$",
+  "maxWorkers": 1,
+  "testTimeout": 30000,
+  "transform": {
+    "^.+\\.(t|j)s$": [
+      "@swc/jest",
+      {
+        "jsc": {
+          "target": "es2022",
+          "parser": {
+            "syntax": "typescript",
+            "decorators": true,
+            "dynamicImport": true
+          },
+          "transform": {
+            "legacyDecorator": true,
+            "decoratorMetadata": true
+          }
+        }
+      }
+    ]
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(viem|@noble|ox)/)"
+  ],
+  "testEnvironment": "node",
+  "moduleNameMapper": {
+    "^@app/common/(.*)$": "<rootDir>/libs/common/src/$1",
+    "^@app/common$": "<rootDir>/libs/common/src/index.ts",
+    "^@app/contracts/(.*)$": "<rootDir>/libs/contracts/src/$1",
+    "^@app/contracts$": "<rootDir>/libs/contracts/src/index.ts"
+  }
+}
