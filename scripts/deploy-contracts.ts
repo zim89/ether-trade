@@ -45,19 +45,21 @@ const DEPLOYER_PRIVATE_KEY =
   (process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`) ||
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 
-async function deployContracts() {
-  console.log('🚀 Connecting to Anvil at:', ANVIL_RPC_URL);
+export async function deployContracts(customRpcUrl?: string, customPrivateKey?: `0x${string}`) {
+  const rpcUrl = customRpcUrl || ANVIL_RPC_URL;
+  const privateKey = customPrivateKey || DEPLOYER_PRIVATE_KEY;
+  console.log('🚀 Connecting to Anvil at:', rpcUrl);
 
-  const account = privateKeyToAccount(DEPLOYER_PRIVATE_KEY);
+  const account = privateKeyToAccount(privateKey);
   const client = createPublicClient({
     chain: foundry,
-    transport: http(ANVIL_RPC_URL),
+    transport: http(rpcUrl),
   });
 
   const walletClient = createWalletClient({
     account,
     chain: foundry,
-    transport: http(ANVIL_RPC_URL),
+    transport: http(rpcUrl),
   });
 
   const chainId = await client.getChainId();
@@ -131,12 +133,14 @@ async function deployContracts() {
   };
 }
 
-void deployContracts()
-  .then(() => {
-    console.log('\n🎉 Deploy script completed successfully.');
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error('\n❌ Deploy script failed:', err);
-    process.exit(1);
-  });
+if (process.argv[1]?.endsWith('deploy-contracts.ts')) {
+  void deployContracts()
+    .then(() => {
+      console.log('\n🎉 Deploy script completed successfully.');
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error('\n❌ Deploy script failed:', err);
+      process.exit(1);
+    });
+}
