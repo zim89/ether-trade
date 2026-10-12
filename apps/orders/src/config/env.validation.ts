@@ -62,6 +62,18 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   REDIS_PASSWORD?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  KAFKA_BROKERS: string = ENV_DEFAULTS.kafkaBrokers;
+
+  @IsString()
+  @IsNotEmpty()
+  KAFKA_CLIENT_ID: string = ENV_DEFAULTS.kafkaClientId;
+
+  @IsString()
+  @IsNotEmpty()
+  APP_ENV: string = ENV_DEFAULTS.appEnv;
 }
 
 /**

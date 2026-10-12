@@ -44,6 +44,18 @@ export class EnvironmentVariables {
   @Min(1)
   @Max(100)
   DB_MAX_CONNECTIONS: number = ENV_DEFAULTS.dbMaxConnections;
+
+  @IsString()
+  @IsNotEmpty()
+  KAFKA_BROKERS: string = ENV_DEFAULTS.kafkaBrokers;
+
+  @IsString()
+  @IsNotEmpty()
+  KAFKA_CLIENT_ID: string = ENV_DEFAULTS.kafkaClientId;
+
+  @IsString()
+  @IsNotEmpty()
+  APP_ENV: string = ENV_DEFAULTS.appEnv;
 }
 
 /**

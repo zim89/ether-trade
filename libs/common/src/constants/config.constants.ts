@@ -46,6 +46,10 @@ export const SHARED_ENV_KEYS = {
 
   // Kafka
   kafkaBrokers: 'KAFKA_BROKERS',
+  kafkaClientId: 'KAFKA_CLIENT_ID',
+
+  // App Environment for topics (<env>.<domain>.<event>)
+  appEnv: 'APP_ENV',
 } as const;
 
 /**
@@ -53,6 +57,7 @@ export const SHARED_ENV_KEYS = {
  */
 export const SHARED_ENV_DEFAULTS = {
   nodeEnv: NodeEnv.DEVELOPMENT,
+  appEnv: 'dev',
   jwtExpiresIn: '15m',
   dbHost: 'localhost',
   dbPort: 5432,
@@ -61,6 +66,8 @@ export const SHARED_ENV_DEFAULTS = {
   dbMaxConnections: 10,
   redisHost: 'localhost',
   redisPort: 6379,
+  kafkaBrokers: 'localhost:9094',
+  kafkaClientId: 'ether-trade',
 } as const;
 
 /**

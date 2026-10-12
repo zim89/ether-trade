@@ -69,6 +69,18 @@ export class EnvironmentVariables {
   @IsInt()
   @Min(0)
   CONFIRMATIONS: number = ENV_DEFAULTS.confirmations;
+
+  @IsString()
+  @IsNotEmpty()
+  KAFKA_BROKERS: string = ENV_DEFAULTS.kafkaBrokers;
+
+  @IsString()
+  @IsNotEmpty()
+  KAFKA_CLIENT_ID: string = ENV_DEFAULTS.kafkaClientId;
+
+  @IsString()
+  @IsNotEmpty()
+  APP_ENV: string = ENV_DEFAULTS.appEnv;
 }
 
 export function validateEnvironment(config: Record<string, unknown>): EnvironmentVariables {

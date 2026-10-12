@@ -1,4 +1,5 @@
 import { SHARED_ENV_DEFAULTS, SHARED_ENV_KEYS } from '@app/common/constants';
+import { KAFKA_CLIENT_IDS } from '@app/common/kafka';
 import { GRPC_SERVICES_CONFIG } from '@app/contracts';
 
 export const ENV_KEYS = {
@@ -15,4 +16,5 @@ export const ENV_DEFAULTS = {
   // App & service specific defaults
   accountsGrpcUrl: GRPC_SERVICES_CONFIG.accounts.defaultUrl,
   dbName: 'accounts_db',
+  kafkaClientId: KAFKA_CLIENT_IDS.accounts,
 } as const;
