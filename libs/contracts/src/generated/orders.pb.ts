@@ -5,11 +5,11 @@
 // source: orders.proto
 
 /* eslint-disable */
-import type { Metadata } from '@grpc/grpc-js';
-import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
-import { Observable } from 'rxjs';
+import type { Metadata } from "@grpc/grpc-js";
+import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
+import { Observable } from "rxjs";
 
-export const protobufPackage = 'orders';
+export const protobufPackage = "orders";
 
 export interface CreateOrderRequest {
   userId: string;
@@ -96,7 +96,7 @@ export interface GetOrderBookResponse {
   timestamp: number;
 }
 
-export const ORDERS_PACKAGE_NAME = 'orders';
+export const ORDERS_PACKAGE_NAME = "orders";
 
 export interface OrdersServiceClient {
   createOrder(request: CreateOrderRequest, metadata?: Metadata): Observable<CreateOrderResponse>;
@@ -139,25 +139,19 @@ export interface OrdersServiceController {
 
 export function OrdersServiceControllerMethods() {
   return function (constructor: Function) {
-    const grpcMethods: string[] = [
-      'createOrder',
-      'cancelOrder',
-      'getOrder',
-      'getOrders',
-      'getOrderBook',
-    ];
+    const grpcMethods: string[] = ["createOrder", "cancelOrder", "getOrder", "getOrders", "getOrderBook"];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod('OrdersService', method)(constructor.prototype[method], method, descriptor);
+      GrpcMethod("OrdersService", method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod('OrdersService', method)(constructor.prototype[method], method, descriptor);
+      GrpcStreamMethod("OrdersService", method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
   };
 }
 
-export const ORDERS_SERVICE_NAME = 'OrdersService';
+export const ORDERS_SERVICE_NAME = "OrdersService";

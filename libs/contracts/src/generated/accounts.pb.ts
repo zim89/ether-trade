@@ -5,11 +5,11 @@
 // source: accounts.proto
 
 /* eslint-disable */
-import type { Metadata } from '@grpc/grpc-js';
-import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
-import { Observable } from 'rxjs';
+import type { Metadata } from "@grpc/grpc-js";
+import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
+import { Observable } from "rxjs";
 
-export const protobufPackage = 'accounts';
+export const protobufPackage = "accounts";
 
 export interface GetBalanceRequest {
   userId: string;
@@ -104,7 +104,7 @@ export interface BalanceResponse {
   updatedAt: number;
 }
 
-export const ACCOUNTS_PACKAGE_NAME = 'accounts';
+export const ACCOUNTS_PACKAGE_NAME = "accounts";
 
 export interface AccountsServiceClient {
   /** Returns the account for (user_id, currency), creating a zero-balance row if missing */
@@ -124,17 +124,11 @@ export interface AccountsServiceClient {
 
   /** Moves funds locked → available (release reserve) */
 
-  unlockBalance(
-    request: UnlockBalanceRequest,
-    metadata?: Metadata,
-  ): Observable<UnlockBalanceResponse>;
+  unlockBalance(request: UnlockBalanceRequest, metadata?: Metadata): Observable<UnlockBalanceResponse>;
 
   /** Credits confirmed on-chain deposit to available_balance (Double-Entry: ON_CHAIN_DEPOSIT) */
 
-  creditDepositFunds(
-    request: CreditDepositFundsRequest,
-    metadata?: Metadata,
-  ): Observable<CreditDepositFundsResponse>;
+  creditDepositFunds(request: CreditDepositFundsRequest, metadata?: Metadata): Observable<CreditDepositFundsResponse>;
 
   /** Debits confirmed on-chain withdrawal from locked_balance (Double-Entry: WITHDRAWAL) */
 
@@ -157,10 +151,7 @@ export interface AccountsServiceController {
   depositSandboxFunds(
     request: DepositSandboxFundsRequest,
     metadata?: Metadata,
-  ):
-    | Promise<DepositSandboxFundsResponse>
-    | Observable<DepositSandboxFundsResponse>
-    | DepositSandboxFundsResponse;
+  ): Promise<DepositSandboxFundsResponse> | Observable<DepositSandboxFundsResponse> | DepositSandboxFundsResponse;
 
   /** Moves funds available → locked (reserve for an order) */
 
@@ -181,48 +172,38 @@ export interface AccountsServiceController {
   creditDepositFunds(
     request: CreditDepositFundsRequest,
     metadata?: Metadata,
-  ):
-    | Promise<CreditDepositFundsResponse>
-    | Observable<CreditDepositFundsResponse>
-    | CreditDepositFundsResponse;
+  ): Promise<CreditDepositFundsResponse> | Observable<CreditDepositFundsResponse> | CreditDepositFundsResponse;
 
   /** Debits confirmed on-chain withdrawal from locked_balance (Double-Entry: WITHDRAWAL) */
 
   debitWithdrawalFunds(
     request: DebitWithdrawalFundsRequest,
     metadata?: Metadata,
-  ):
-    | Promise<DebitWithdrawalFundsResponse>
-    | Observable<DebitWithdrawalFundsResponse>
-    | DebitWithdrawalFundsResponse;
+  ): Promise<DebitWithdrawalFundsResponse> | Observable<DebitWithdrawalFundsResponse> | DebitWithdrawalFundsResponse;
 }
 
 export function AccountsServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      'getBalance',
-      'depositSandboxFunds',
-      'lockBalance',
-      'unlockBalance',
-      'creditDepositFunds',
-      'debitWithdrawalFunds',
+      "getBalance",
+      "depositSandboxFunds",
+      "lockBalance",
+      "unlockBalance",
+      "creditDepositFunds",
+      "debitWithdrawalFunds",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod('AccountsService', method)(constructor.prototype[method], method, descriptor);
+      GrpcMethod("AccountsService", method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod('AccountsService', method)(
-        constructor.prototype[method],
-        method,
-        descriptor,
-      );
+      GrpcStreamMethod("AccountsService", method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
   };
 }
 
-export const ACCOUNTS_SERVICE_NAME = 'AccountsService';
+export const ACCOUNTS_SERVICE_NAME = "AccountsService";

@@ -5,11 +5,11 @@
 // source: identity.proto
 
 /* eslint-disable */
-import type { Metadata } from '@grpc/grpc-js';
-import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
-import { Observable } from 'rxjs';
+import type { Metadata } from "@grpc/grpc-js";
+import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
+import { Observable } from "rxjs";
 
-export const protobufPackage = 'identity';
+export const protobufPackage = "identity";
 
 export interface GetNonceRequest {
   walletAddress: string;
@@ -115,7 +115,7 @@ export interface ValidateTokenResponse {
   role: string;
 }
 
-export const IDENTITY_PACKAGE_NAME = 'identity';
+export const IDENTITY_PACKAGE_NAME = "identity";
 
 export interface IdentityServiceClient {
   /** Generates a single-use SIWE nonce for a wallet address */
@@ -128,10 +128,7 @@ export interface IdentityServiceClient {
 
   /** Rotates Access & Refresh tokens */
 
-  refreshTokens(
-    request: RefreshTokensRequest,
-    metadata?: Metadata,
-  ): Observable<RefreshTokensResponse>;
+  refreshTokens(request: RefreshTokensRequest, metadata?: Metadata): Observable<RefreshTokensResponse>;
 
   /** Revokes a user session */
 
@@ -141,24 +138,15 @@ export interface IdentityServiceClient {
 
   getUserById(request: GetUserByIdRequest, metadata?: Metadata): Observable<GetUserByIdResponse>;
 
-  getUserByAddress(
-    request: GetUserByAddressRequest,
-    metadata?: Metadata,
-  ): Observable<GetUserByAddressResponse>;
+  getUserByAddress(request: GetUserByAddressRequest, metadata?: Metadata): Observable<GetUserByAddressResponse>;
 
   /** Internal token validation */
 
-  validateToken(
-    request: ValidateTokenRequest,
-    metadata?: Metadata,
-  ): Observable<ValidateTokenResponse>;
+  validateToken(request: ValidateTokenRequest, metadata?: Metadata): Observable<ValidateTokenResponse>;
 
   /** Updates user role (admin/dev sandbox) */
 
-  updateUserRole(
-    request: UpdateUserRoleRequest,
-    metadata?: Metadata,
-  ): Observable<UpdateUserRoleResponse>;
+  updateUserRole(request: UpdateUserRoleRequest, metadata?: Metadata): Observable<UpdateUserRoleResponse>;
 
   /** Sandbox login without cryptographic signature (dev/test environments only) */
 
@@ -204,10 +192,7 @@ export interface IdentityServiceController {
   getUserByAddress(
     request: GetUserByAddressRequest,
     metadata?: Metadata,
-  ):
-    | Promise<GetUserByAddressResponse>
-    | Observable<GetUserByAddressResponse>
-    | GetUserByAddressResponse;
+  ): Promise<GetUserByAddressResponse> | Observable<GetUserByAddressResponse> | GetUserByAddressResponse;
 
   /** Internal token validation */
 
@@ -234,32 +219,28 @@ export interface IdentityServiceController {
 export function IdentityServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      'getNonce',
-      'verifySiwe',
-      'refreshTokens',
-      'logout',
-      'getUserById',
-      'getUserByAddress',
-      'validateToken',
-      'updateUserRole',
-      'sandboxLogin',
+      "getNonce",
+      "verifySiwe",
+      "refreshTokens",
+      "logout",
+      "getUserById",
+      "getUserByAddress",
+      "validateToken",
+      "updateUserRole",
+      "sandboxLogin",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod('IdentityService', method)(constructor.prototype[method], method, descriptor);
+      GrpcMethod("IdentityService", method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod('IdentityService', method)(
-        constructor.prototype[method],
-        method,
-        descriptor,
-      );
+      GrpcStreamMethod("IdentityService", method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
   };
 }
 
-export const IDENTITY_SERVICE_NAME = 'IdentityService';
+export const IDENTITY_SERVICE_NAME = "IdentityService";

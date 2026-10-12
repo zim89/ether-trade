@@ -34,6 +34,10 @@ export class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
+  TRANSFERS_GRPC_URL: string = ENV_DEFAULTS.transfersGrpcUrl;
+
+  @IsString()
+  @IsNotEmpty()
   COOKIE_SECRET: string = ENV_DEFAULTS.cookieSecret;
 
   @IsString()

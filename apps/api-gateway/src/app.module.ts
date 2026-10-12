@@ -7,6 +7,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
 import { gatewayConfig, validateEnvironment } from './config';
 import { OrdersModule } from './orders';
 import { SandboxModule } from './sandbox';
+import { TransfersModule } from './transfers';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { SandboxModule } from './sandbox';
     BalancesModule,
     SandboxModule,
     OrdersModule,
+    TransfersModule,
   ],
 })
 export class AppModule implements NestModule {

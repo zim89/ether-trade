@@ -35,8 +35,9 @@ message GetWithdrawalByIdRequest {
 message GetWithdrawalHistoryRequest {
   string user_id = 1;
   optional string status = 2;
-  optional int32 limit = 3;
-  optional int32 offset = 4;
+  optional string currency = 3;
+  optional int32 limit = 4;
+  optional int32 offset = 5;
 }
 
 message WithdrawalItem {
@@ -51,7 +52,8 @@ message WithdrawalItem {
   optional string error_message = 9;
   string idempotency_key = 10;
   int64 created_at = 11;          // Unix seconds
-  optional int64 processed_at = 12; // Unix seconds
+  optional int64 updated_at = 12; // Unix seconds
+  optional int64 processed_at = 13; // Unix seconds
 }
 
 message RequestWithdrawalResponse {

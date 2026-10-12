@@ -177,6 +177,9 @@ export class TransfersService {
       errorMessage: row.errorMessage ?? undefined,
       idempotencyKey: row.idempotencyKey,
       createdAt: Math.floor(row.createdAt.getTime() / 1000),
+      updatedAt: row.processedAt
+        ? Math.floor(row.processedAt.getTime() / 1000)
+        : Math.floor(row.createdAt.getTime() / 1000),
       processedAt: row.processedAt ? Math.floor(row.processedAt.getTime() / 1000) : undefined,
     };
   }

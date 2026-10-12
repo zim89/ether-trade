@@ -11,6 +11,7 @@ import {
   OrdersServiceClient,
   PROTO_PACKAGES,
   PROTO_SERVICES,
+  TransfersServiceClient,
 } from '@app/contracts';
 import { GatewayConfig } from '../config';
 
@@ -66,6 +67,22 @@ import { GatewayConfig } from '../config';
           };
         },
       },
+      {
+        name: PROTO_PACKAGES.transfers,
+        imports: [ConfigModule],
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService) => {
+          const config = configService.getOrThrow<GatewayConfig>(CONFIG_NAMESPACES.gateway);
+          return {
+            transport: Transport.GRPC,
+            options: {
+              package: PROTO_PACKAGES.transfers,
+              protoPath: getServiceProtoPath(GRPC_SERVICE_KEYS.transfers),
+              url: config.transfersGrpcUrl || GRPC_SERVICES_CONFIG.transfers.defaultUrl,
+            },
+          };
+        },
+      },
     ]),
   ],
   providers: [
@@ -90,12 +107,20 @@ import { GatewayConfig } from '../config';
       },
       inject: [PROTO_PACKAGES.orders],
     },
+    {
+      provide: PROTO_SERVICES.transfers,
+      useFactory: (client: ClientGrpc): TransfersServiceClient => {
+        return client.getService<TransfersServiceClient>(PROTO_SERVICES.transfers);
+      },
+      inject: [PROTO_PACKAGES.transfers],
+    },
   ],
   exports: [
     NestClientsModule,
     PROTO_SERVICES.identity,
     PROTO_SERVICES.accounts,
     PROTO_SERVICES.orders,
+    PROTO_SERVICES.transfers,
   ],
 })
 export class ClientsModule {}

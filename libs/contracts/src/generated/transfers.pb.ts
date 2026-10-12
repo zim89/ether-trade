@@ -5,11 +5,11 @@
 // source: transfers.proto
 
 /* eslint-disable */
-import type { Metadata } from '@grpc/grpc-js';
-import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
-import { Observable } from 'rxjs';
+import type { Metadata } from "@grpc/grpc-js";
+import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
+import { Observable } from "rxjs";
 
-export const protobufPackage = 'transfers';
+export const protobufPackage = "transfers";
 
 export interface GetDepositAddressRequest {
   userId: string;
@@ -40,6 +40,7 @@ export interface GetWithdrawalByIdRequest {
 export interface GetWithdrawalHistoryRequest {
   userId: string;
   status?: string | undefined;
+  currency?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
 }
@@ -51,13 +52,19 @@ export interface WithdrawalItem {
   currency: string;
   amount: string;
   txHash?: string | undefined;
-  nonce?: number | undefined;
+  nonce?:
+    | number
+    | undefined;
   /** "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" */
   status: string;
   errorMessage?: string | undefined;
   idempotencyKey: string;
   /** Unix seconds */
   createdAt: number;
+  /** Unix seconds */
+  updatedAt?:
+    | number
+    | undefined;
   /** Unix seconds */
   processedAt?: number | undefined;
 }
@@ -75,23 +82,14 @@ export interface GetWithdrawalHistoryResponse {
   total: number;
 }
 
-export const TRANSFERS_PACKAGE_NAME = 'transfers';
+export const TRANSFERS_PACKAGE_NAME = "transfers";
 
 export interface TransfersServiceClient {
-  getDepositAddress(
-    request: GetDepositAddressRequest,
-    metadata?: Metadata,
-  ): Observable<GetDepositAddressResponse>;
+  getDepositAddress(request: GetDepositAddressRequest, metadata?: Metadata): Observable<GetDepositAddressResponse>;
 
-  requestWithdrawal(
-    request: RequestWithdrawalRequest,
-    metadata?: Metadata,
-  ): Observable<RequestWithdrawalResponse>;
+  requestWithdrawal(request: RequestWithdrawalRequest, metadata?: Metadata): Observable<RequestWithdrawalResponse>;
 
-  getWithdrawalById(
-    request: GetWithdrawalByIdRequest,
-    metadata?: Metadata,
-  ): Observable<GetWithdrawalByIdResponse>;
+  getWithdrawalById(request: GetWithdrawalByIdRequest, metadata?: Metadata): Observable<GetWithdrawalByIdResponse>;
 
   getWithdrawalHistory(
     request: GetWithdrawalHistoryRequest,
@@ -103,60 +101,44 @@ export interface TransfersServiceController {
   getDepositAddress(
     request: GetDepositAddressRequest,
     metadata?: Metadata,
-  ):
-    | Promise<GetDepositAddressResponse>
-    | Observable<GetDepositAddressResponse>
-    | GetDepositAddressResponse;
+  ): Promise<GetDepositAddressResponse> | Observable<GetDepositAddressResponse> | GetDepositAddressResponse;
 
   requestWithdrawal(
     request: RequestWithdrawalRequest,
     metadata?: Metadata,
-  ):
-    | Promise<RequestWithdrawalResponse>
-    | Observable<RequestWithdrawalResponse>
-    | RequestWithdrawalResponse;
+  ): Promise<RequestWithdrawalResponse> | Observable<RequestWithdrawalResponse> | RequestWithdrawalResponse;
 
   getWithdrawalById(
     request: GetWithdrawalByIdRequest,
     metadata?: Metadata,
-  ):
-    | Promise<GetWithdrawalByIdResponse>
-    | Observable<GetWithdrawalByIdResponse>
-    | GetWithdrawalByIdResponse;
+  ): Promise<GetWithdrawalByIdResponse> | Observable<GetWithdrawalByIdResponse> | GetWithdrawalByIdResponse;
 
   getWithdrawalHistory(
     request: GetWithdrawalHistoryRequest,
     metadata?: Metadata,
-  ):
-    | Promise<GetWithdrawalHistoryResponse>
-    | Observable<GetWithdrawalHistoryResponse>
-    | GetWithdrawalHistoryResponse;
+  ): Promise<GetWithdrawalHistoryResponse> | Observable<GetWithdrawalHistoryResponse> | GetWithdrawalHistoryResponse;
 }
 
 export function TransfersServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      'getDepositAddress',
-      'requestWithdrawal',
-      'getWithdrawalById',
-      'getWithdrawalHistory',
+      "getDepositAddress",
+      "requestWithdrawal",
+      "getWithdrawalById",
+      "getWithdrawalHistory",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod('TransfersService', method)(constructor.prototype[method], method, descriptor);
+      GrpcMethod("TransfersService", method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod('TransfersService', method)(
-        constructor.prototype[method],
-        method,
-        descriptor,
-      );
+      GrpcStreamMethod("TransfersService", method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
   };
 }
 
-export const TRANSFERS_SERVICE_NAME = 'TransfersService';
+export const TRANSFERS_SERVICE_NAME = "TransfersService";
