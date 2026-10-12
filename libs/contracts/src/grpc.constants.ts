@@ -1,5 +1,6 @@
 import { ACCOUNTS_PACKAGE_NAME, ACCOUNTS_SERVICE_NAME } from './generated/accounts.pb';
 import { IDENTITY_PACKAGE_NAME, IDENTITY_SERVICE_NAME } from './generated/identity.pb';
+import { ORDERS_PACKAGE_NAME, ORDERS_SERVICE_NAME } from './generated/orders.pb';
 
 /**
  * gRPC protobuf package names sourced directly from generated `*_PACKAGE_NAME` constants.
@@ -8,6 +9,7 @@ import { IDENTITY_PACKAGE_NAME, IDENTITY_SERVICE_NAME } from './generated/identi
 export const PROTO_PACKAGES = {
   identity: IDENTITY_PACKAGE_NAME,
   accounts: ACCOUNTS_PACKAGE_NAME,
+  orders: ORDERS_PACKAGE_NAME,
 } as const;
 
 export type ProtoPackageName = (typeof PROTO_PACKAGES)[keyof typeof PROTO_PACKAGES];
@@ -19,6 +21,7 @@ export type ProtoPackageName = (typeof PROTO_PACKAGES)[keyof typeof PROTO_PACKAG
 export const PROTO_SERVICES = {
   identity: IDENTITY_SERVICE_NAME,
   accounts: ACCOUNTS_SERVICE_NAME,
+  orders: ORDERS_SERVICE_NAME,
 } as const;
 
 export type ProtoServiceName = (typeof PROTO_SERVICES)[keyof typeof PROTO_SERVICES];
@@ -49,8 +52,8 @@ export const GRPC_SERVICES_CONFIG = {
     port: 50053,
     defaultUrl: '0.0.0.0:50053',
     protoRelativePath: 'libs/contracts/proto/orders.proto',
-    packageName: 'orders' as ProtoPackageName,
-    serviceName: 'OrdersService' as ProtoServiceName,
+    packageName: PROTO_PACKAGES.orders,
+    serviceName: PROTO_SERVICES.orders,
   },
 } as const;
 

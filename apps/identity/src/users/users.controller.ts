@@ -3,8 +3,11 @@ import { GrpcMethod } from '@nestjs/microservices';
 import { UserRole } from '@app/common/constants';
 import {
   type GetUserByIdRequest,
+  type GetUserByIdResponse,
   type GetUserByAddressRequest,
+  type GetUserByAddressResponse,
   type UpdateUserRoleRequest,
+  type UpdateUserRoleResponse,
   type UserResponse,
   IDENTITY_SERVICE_NAME,
 } from '@app/contracts';
@@ -17,19 +20,19 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @GrpcMethod(IDENTITY_SERVICE_NAME, 'GetUserById')
-  async getUserById(data: GetUserByIdRequest): Promise<UserResponse> {
+  async getUserById(data: GetUserByIdRequest): Promise<GetUserByIdResponse> {
     const user = await this.usersService.findById(data.userId);
-    return this.mapToUserResponse(user);
+    return { user: this.mapToUserResponse(user) };
   }
 
   @GrpcMethod(IDENTITY_SERVICE_NAME, 'GetUserByAddress')
-  async getUserByAddress(data: GetUserByAddressRequest): Promise<UserResponse> {
+  async getUserByAddress(data: GetUserByAddressRequest): Promise<GetUserByAddressResponse> {
     const user = await this.usersService.findByAddress(data.walletAddress);
-    return this.mapToUserResponse(user);
+    return { user: this.mapToUserResponse(user) };
   }
 
   @GrpcMethod(IDENTITY_SERVICE_NAME, 'UpdateUserRole')
-  async updateUserRole(data: UpdateUserRoleRequest): Promise<UserResponse> {
+  async updateUserRole(data: UpdateUserRoleRequest): Promise<UpdateUserRoleResponse> {
     const role = data.role as UserRole;
     if (!Object.values(UserRole).includes(role)) {
       throw new BadRequestException({
@@ -38,7 +41,7 @@ export class UsersController {
       });
     }
     const user = await this.usersService.updateRole(data.userId, role);
-    return this.mapToUserResponse(user);
+    return { user: this.mapToUserResponse(user) };
   }
 
   private mapToUserResponse(user: User): UserResponse {

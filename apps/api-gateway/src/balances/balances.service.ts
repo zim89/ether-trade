@@ -45,14 +45,15 @@ export class BalancesService {
       this.grpcDeadlineMs,
     );
 
+    const b = response.balance;
     return {
-      accountId: response.accountId,
-      userId: response.userId,
-      currency: response.currency,
-      availableBalance: response.availableBalance,
-      lockedBalance: response.lockedBalance,
-      totalBalance: response.totalBalance,
-      updatedAt: Number(response.updatedAt),
+      accountId: b?.accountId ?? '',
+      userId: b?.userId ?? '',
+      currency: b?.currency ?? '',
+      availableBalance: b?.availableBalance ?? '0',
+      lockedBalance: b?.lockedBalance ?? '0',
+      totalBalance: b?.totalBalance ?? '0',
+      updatedAt: Number(b?.updatedAt ?? 0),
     };
   }
 }

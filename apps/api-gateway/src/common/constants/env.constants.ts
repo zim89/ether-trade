@@ -11,9 +11,11 @@ export const ENV_KEYS = {
   corsOrigin: 'CORS_ORIGIN',
   identityGrpcUrl: 'IDENTITY_GRPC_URL',
   accountsGrpcUrl: 'ACCOUNTS_GRPC_URL',
+  ordersGrpcUrl: 'ORDERS_GRPC_URL',
   cookieSecret: 'COOKIE_SECRET',
   jwtSecret: 'JWT_SECRET',
   grpcDefaultDeadlineMs: 'GRPC_DEFAULT_DEADLINE_MS',
+  ordersGrpcDeadlineMs: 'ORDERS_GRPC_DEADLINE_MS',
 } as const;
 
 /**
@@ -25,8 +27,10 @@ export const ENV_DEFAULTS = {
   corsOrigin: 'http://localhost:3000',
   identityGrpcUrl: GRPC_SERVICES_CONFIG.identity.defaultUrl,
   accountsGrpcUrl: GRPC_SERVICES_CONFIG.accounts.defaultUrl,
+  ordersGrpcUrl: GRPC_SERVICES_CONFIG.orders.defaultUrl,
   cookieSecret: 'dev-cookie-secret-min-32-chars-long-local',
   grpcDefaultDeadlineMs: 5000,
+  ordersGrpcDeadlineMs: 2000,
 } as const;
 
 /**

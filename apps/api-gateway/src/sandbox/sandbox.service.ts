@@ -60,14 +60,15 @@ export class SandboxService {
       this.grpcDeadlineMs,
     );
 
+    const b = response.balance;
     return {
-      accountId: response.accountId,
-      userId: response.userId,
-      currency: response.currency,
-      availableBalance: response.availableBalance,
-      lockedBalance: response.lockedBalance,
-      totalBalance: response.totalBalance,
-      updatedAt: Number(response.updatedAt),
+      accountId: b?.accountId ?? '',
+      userId: b?.userId ?? '',
+      currency: b?.currency ?? '',
+      availableBalance: b?.availableBalance ?? '0',
+      lockedBalance: b?.lockedBalance ?? '0',
+      totalBalance: b?.totalBalance ?? '0',
+      updatedAt: Number(b?.updatedAt ?? 0),
     };
   }
 
@@ -89,11 +90,11 @@ export class SandboxService {
     );
 
     return {
-      id: response.id,
-      walletAddress: response.walletAddress,
-      role: response.role as UserRole,
-      isActive: response.isActive,
-      createdAt: Number(response.createdAt),
+      id: response.user?.id ?? '',
+      walletAddress: response.user?.walletAddress ?? '',
+      role: (response.user?.role as UserRole) ?? UserRole.ADMIN,
+      isActive: response.user?.isActive ?? true,
+      createdAt: Number(response.user?.createdAt ?? 0),
     };
   }
 

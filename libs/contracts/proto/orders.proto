@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package orders;
+
+service OrdersService {
+  rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
+  rpc CancelOrder (CancelOrderRequest) returns (CancelOrderResponse);
+  rpc GetOrder (GetOrderRequest) returns (GetOrderResponse);
+  rpc GetOrders (GetOrdersRequest) returns (GetOrdersResponse);
+  rpc GetOrderBook (GetOrderBookRequest) returns (GetOrderBookResponse);
+}
+
+message CreateOrderRequest {
+  string user_id = 1;
+  string pair = 2;
+  string side = 3;             // "BUY" | "SELL"
+  string type = 4;             // "LIMIT" | "MARKET"
+  string price = 5;            // Decimal string (e.g. "60000.00000000")
+  string amount = 6;           // Decimal string (e.g. "0.10000000")
+  string idempotency_key = 7;
+}
+
+message CancelOrderRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string idempotency_key = 3;
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+  string user_id = 2;
+}
+
+message GetOrdersRequest {
+  string user_id = 1;
+  optional string pair = 2;
+  optional string status = 3;
+  optional int32 limit = 4;
+  optional int32 offset = 5;
+}
+
+message OrderItem {
+  string order_id = 1;
+  string user_id = 2;
+  string pair = 3;
+  string side = 4;
+  string type = 5;
+  string price = 6;
+  string amount = 7;
+  string filled_amount = 8;
+  string remaining_amount = 9;
+  string status = 10;
+  int64 created_at = 11;
+  int64 updated_at = 12;
+}
+
+message CreateOrderResponse {
+  OrderItem order = 1;
+}
+
+message CancelOrderResponse {
+  OrderItem order = 1;
+}
+
+message GetOrderResponse {
+  OrderItem order = 1;
+}
+
+message GetOrdersResponse {
+  repeated OrderItem orders = 1;
+  int32 total = 2;
+}
+
+message GetOrderBookRequest {
+  string pair = 1;
+  optional int32 depth = 2;
+}
+
+message OrderBookLevel {
+  string price = 1;
+  string amount = 2;
+  int32 order_count = 3;
+}
+
+message GetOrderBookResponse {
+  string pair = 1;
+  repeated OrderBookLevel bids = 2; // Sorted descending by price
+  repeated OrderBookLevel asks = 3; // Sorted ascending by price
+  int64 timestamp = 4;
+}

@@ -5,11 +5,13 @@ export const LOGGER_CONTEXTS = {
   envValidation: 'EnvValidation',
   bootstrap: 'Bootstrap',
   accountsBootstrap: 'AccountsBootstrap',
+  ordersBootstrap: 'OrdersBootstrap',
   identityBootstrap: 'IdentityBootstrap',
   apiGatewayBootstrap: 'ApiGatewayBootstrap',
   database: 'Database',
   auth: 'Auth',
   balances: 'Balances',
+  orders: 'Orders',
   redis: 'Redis',
 } as const;
 

@@ -157,11 +157,11 @@ export class AuthService {
     );
 
     return {
-      id: response.id,
-      walletAddress: response.walletAddress,
-      role: response.role as UserRole,
-      isActive: response.isActive,
-      createdAt: response.createdAt,
+      id: response.user?.id ?? '',
+      walletAddress: response.user?.walletAddress ?? '',
+      role: (response.user?.role as UserRole) ?? UserRole.TRADER,
+      isActive: response.user?.isActive ?? false,
+      createdAt: response.user?.createdAt ?? 0,
     };
   }
 }

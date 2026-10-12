@@ -5,6 +5,7 @@ import { BalancesModule } from './balances';
 import { ClientsModule } from './clients';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { gatewayConfig, validateEnvironment } from './config';
+import { OrdersModule } from './orders';
 import { SandboxModule } from './sandbox';
 
 @Module({
@@ -18,6 +19,7 @@ import { SandboxModule } from './sandbox';
     AuthModule,
     BalancesModule,
     SandboxModule,
+    OrdersModule,
   ],
 })
 export class AppModule implements NestModule {

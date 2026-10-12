@@ -7,26 +7,26 @@ service IdentityService {
   rpc GetNonce (GetNonceRequest) returns (GetNonceResponse);
 
   // Verifies EIP-4361 signature, finds/registers user and returns tokens
-  rpc VerifySiwe (VerifySiweRequest) returns (AuthResponse);
+  rpc VerifySiwe (VerifySiweRequest) returns (VerifySiweResponse);
 
   // Rotates Access & Refresh tokens
-  rpc RefreshTokens (RefreshTokensRequest) returns (AuthResponse);
+  rpc RefreshTokens (RefreshTokensRequest) returns (RefreshTokensResponse);
 
   // Revokes a user session
   rpc Logout (LogoutRequest) returns (LogoutResponse);
 
   // Query user profile
-  rpc GetUserById (GetUserByIdRequest) returns (UserResponse);
-  rpc GetUserByAddress (GetUserByAddressRequest) returns (UserResponse);
+  rpc GetUserById (GetUserByIdRequest) returns (GetUserByIdResponse);
+  rpc GetUserByAddress (GetUserByAddressRequest) returns (GetUserByAddressResponse);
 
   // Internal token validation
   rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
 
   // Updates user role (admin/dev sandbox)
-  rpc UpdateUserRole (UpdateUserRoleRequest) returns (UserResponse);
+  rpc UpdateUserRole (UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
 
   // Sandbox login without cryptographic signature (dev/test environments only)
-  rpc SandboxLogin (SandboxLoginRequest) returns (AuthResponse);
+  rpc SandboxLogin (SandboxLoginRequest) returns (SandboxLoginResponse);
 }
 
 message GetNonceRequest {
@@ -43,11 +43,30 @@ message VerifySiweRequest {
   string signature = 2; // 0x... hex signature
 }
 
+message VerifySiweResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_in = 3; // In seconds
+  UserResponse user = 4;
+}
+
 message RefreshTokensRequest {
   string refresh_token = 1;
 }
 
-message AuthResponse {
+message RefreshTokensResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_in = 3; // In seconds
+  UserResponse user = 4;
+}
+
+message SandboxLoginRequest {
+  string wallet_address = 1;
+  string role = 2;
+}
+
+message SandboxLoginResponse {
   string access_token = 1;
   string refresh_token = 2;
   int64 expires_in = 3; // In seconds
@@ -67,8 +86,25 @@ message GetUserByIdRequest {
   string user_id = 1;
 }
 
+message GetUserByIdResponse {
+  UserResponse user = 1;
+}
+
 message GetUserByAddressRequest {
   string wallet_address = 1;
+}
+
+message GetUserByAddressResponse {
+  UserResponse user = 1;
+}
+
+message UpdateUserRoleRequest {
+  string user_id = 1;
+  string role = 2;
+}
+
+message UpdateUserRoleResponse {
+  UserResponse user = 1;
 }
 
 message UserResponse {
@@ -88,14 +124,4 @@ message ValidateTokenResponse {
   string user_id = 2;
   string wallet_address = 3;
   string role = 4;
-}
-
-message UpdateUserRoleRequest {
-  string user_id = 1;
-  string role = 2;
-}
-
-message SandboxLoginRequest {
-  string wallet_address = 1;
-  string role = 2;
 }

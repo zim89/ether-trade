@@ -4,11 +4,13 @@ import {
   type GetNonceRequest,
   type GetNonceResponse,
   type VerifySiweRequest,
-  type AuthResponse,
+  type VerifySiweResponse,
   type RefreshTokensRequest,
+  type RefreshTokensResponse,
   type LogoutRequest,
   type LogoutResponse,
   type SandboxLoginRequest,
+  type SandboxLoginResponse,
   type ValidateTokenRequest,
   type ValidateTokenResponse,
   IDENTITY_SERVICE_NAME,
@@ -25,12 +27,12 @@ export class AuthController {
   }
 
   @GrpcMethod(IDENTITY_SERVICE_NAME, 'VerifySiwe')
-  async verifySiwe(data: VerifySiweRequest): Promise<AuthResponse> {
+  async verifySiwe(data: VerifySiweRequest): Promise<VerifySiweResponse> {
     return this.authService.verifySiwe(data.message, data.signature);
   }
 
   @GrpcMethod(IDENTITY_SERVICE_NAME, 'RefreshTokens')
-  async refreshTokens(data: RefreshTokensRequest): Promise<AuthResponse> {
+  async refreshTokens(data: RefreshTokensRequest): Promise<RefreshTokensResponse> {
     return this.authService.refreshTokens(data.refreshToken);
   }
 
@@ -46,7 +48,7 @@ export class AuthController {
   }
 
   @GrpcMethod(IDENTITY_SERVICE_NAME, 'SandboxLogin')
-  async sandboxLogin(data: SandboxLoginRequest): Promise<AuthResponse> {
+  async sandboxLogin(data: SandboxLoginRequest): Promise<SandboxLoginResponse> {
     return this.authService.sandboxLogin(data.walletAddress, data.role);
   }
 }

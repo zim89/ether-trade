@@ -2,7 +2,12 @@ import { Injectable, UnauthorizedException, BadRequestException, Logger } from '
 import { verifyMessage, Hex } from 'viem';
 import { parseSiweMessage } from 'viem/siwe';
 import { UserRole } from '@app/common/constants';
-import { AuthResponse, ValidateTokenResponse } from '@app/contracts';
+import {
+  VerifySiweResponse,
+  RefreshTokensResponse,
+  SandboxLoginResponse,
+  ValidateTokenResponse,
+} from '@app/contracts';
 import { User } from '../database/schema/users.schema';
 import { UsersService } from '../users';
 import { AUTH_ERROR_CODES, AUTH_ERRORS, AUTH_LOGS } from './auth.constants';
@@ -52,7 +57,7 @@ export class AuthService {
    * @throws {BadRequestException} If message structure or signature is malformed
    * @throws {UnauthorizedException} If nonce is expired/consumed or signature is invalid
    */
-  async verifySiwe(rawMessage: string, signature: string): Promise<AuthResponse> {
+  async verifySiwe(rawMessage: string, signature: string): Promise<VerifySiweResponse> {
     if (!rawMessage || !signature) {
       throw new BadRequestException({
         message: AUTH_ERRORS.siweCredentialsRequired,
@@ -124,7 +129,7 @@ export class AuthService {
    * @param refreshToken - Raw opaque refresh token string (40 bytes hex)
    * @throws {UnauthorizedException} If the refresh token is expired, revoked, or compromised
    */
-  async refreshTokens(refreshToken: string): Promise<AuthResponse> {
+  async refreshTokens(refreshToken: string): Promise<RefreshTokensResponse> {
     const { tokens, user } = await this.tokenService.rotateTokens(refreshToken);
     return this.mapToAuthResponse(tokens, user);
   }
@@ -177,7 +182,7 @@ export class AuthService {
    * @param walletAddress - EVM wallet address to log in as (defaults to Hardhat #0)
    * @param role - Optional role to assign (e.g. TRADER or ADMIN)
    */
-  async sandboxLogin(walletAddress?: string, role?: string): Promise<AuthResponse> {
+  async sandboxLogin(walletAddress?: string, role?: string): Promise<SandboxLoginResponse> {
     const DEFAULT_DEV_WALLET = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
     const address = this.usersService.normalizeAddress(walletAddress || DEFAULT_DEV_WALLET);
 
@@ -192,13 +197,16 @@ export class AuthService {
   }
 
   /**
-   * Maps internal domain tokens and user entity to gRPC AuthResponse format.
+   * Maps internal domain tokens and user entity to gRPC auth response format.
    *
    * @param tokens - Generated JWT and Refresh token pair
    * @param user - User database entity
-   * @returns Formatted AuthResponse object matching proto definition
+   * @returns Formatted auth response object matching proto definition
    */
-  private mapToAuthResponse(tokens: GeneratedTokens, user: User): AuthResponse {
+  private mapToAuthResponse(
+    tokens: GeneratedTokens,
+    user: User,
+  ): VerifySiweResponse & RefreshTokensResponse & SandboxLoginResponse {
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,

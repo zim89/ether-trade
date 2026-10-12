@@ -11,7 +11,11 @@ export const gatewayConfig = registerAs(CONFIG_NAMESPACES.gateway, (): GatewayCo
   jwtSecret: process.env[ENV_KEYS.jwtSecret] ?? '',
   identityGrpcUrl: process.env[ENV_KEYS.identityGrpcUrl] ?? ENV_DEFAULTS.identityGrpcUrl,
   accountsGrpcUrl: process.env[ENV_KEYS.accountsGrpcUrl] ?? ENV_DEFAULTS.accountsGrpcUrl,
+  ordersGrpcUrl: process.env[ENV_KEYS.ordersGrpcUrl] ?? ENV_DEFAULTS.ordersGrpcUrl,
   grpcDefaultDeadlineMs: process.env[ENV_KEYS.grpcDefaultDeadlineMs]
     ? Number(process.env[ENV_KEYS.grpcDefaultDeadlineMs])
     : ENV_DEFAULTS.grpcDefaultDeadlineMs,
+  ordersGrpcDeadlineMs: process.env[ENV_KEYS.ordersGrpcDeadlineMs]
+    ? Number(process.env[ENV_KEYS.ordersGrpcDeadlineMs])
+    : ENV_DEFAULTS.ordersGrpcDeadlineMs,
 }));

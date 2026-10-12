@@ -8,6 +8,7 @@ import {
   GRPC_SERVICE_KEYS,
   GRPC_SERVICES_CONFIG,
   IdentityServiceClient,
+  OrdersServiceClient,
   PROTO_PACKAGES,
   PROTO_SERVICES,
 } from '@app/contracts';
@@ -49,6 +50,22 @@ import { GatewayConfig } from '../config';
           };
         },
       },
+      {
+        name: PROTO_PACKAGES.orders,
+        imports: [ConfigModule],
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService) => {
+          const config = configService.getOrThrow<GatewayConfig>(CONFIG_NAMESPACES.gateway);
+          return {
+            transport: Transport.GRPC,
+            options: {
+              package: PROTO_PACKAGES.orders,
+              protoPath: getServiceProtoPath(GRPC_SERVICE_KEYS.orders),
+              url: config.ordersGrpcUrl || GRPC_SERVICES_CONFIG.orders.defaultUrl,
+            },
+          };
+        },
+      },
     ]),
   ],
   providers: [
@@ -66,7 +83,19 @@ import { GatewayConfig } from '../config';
       },
       inject: [PROTO_PACKAGES.accounts],
     },
+    {
+      provide: PROTO_SERVICES.orders,
+      useFactory: (client: ClientGrpc): OrdersServiceClient => {
+        return client.getService<OrdersServiceClient>(PROTO_SERVICES.orders);
+      },
+      inject: [PROTO_PACKAGES.orders],
+    },
   ],
-  exports: [NestClientsModule, PROTO_SERVICES.identity, PROTO_SERVICES.accounts],
+  exports: [
+    NestClientsModule,
+    PROTO_SERVICES.identity,
+    PROTO_SERVICES.accounts,
+    PROTO_SERVICES.orders,
+  ],
 })
 export class ClientsModule {}

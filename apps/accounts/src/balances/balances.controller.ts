@@ -4,9 +4,13 @@ import { GrpcMethod } from '@nestjs/microservices';
 import { authorizeM2MCaller } from '@app/common/utils';
 import {
   type GetBalanceRequest,
+  type GetBalanceResponse,
   type DepositSandboxFundsRequest,
+  type DepositSandboxFundsResponse,
   type LockBalanceRequest,
+  type LockBalanceResponse,
   type UnlockBalanceRequest,
+  type UnlockBalanceResponse,
   type BalanceResponse,
   ACCOUNTS_SERVICE_NAME,
 } from '@app/contracts';
@@ -19,33 +23,36 @@ export class BalancesController {
   constructor(private readonly balancesService: BalancesService) {}
 
   @GrpcMethod(ACCOUNTS_SERVICE_NAME, 'GetBalance')
-  async getBalance(data: GetBalanceRequest): Promise<BalanceResponse> {
+  async getBalance(data: GetBalanceRequest): Promise<GetBalanceResponse> {
     const account = await this.balancesService.getBalance(data);
-    return this.mapToBalanceResponse(account);
+    return { balance: this.mapToBalanceResponse(account) };
   }
 
   @GrpcMethod(ACCOUNTS_SERVICE_NAME, 'DepositSandboxFunds')
   async depositSandboxFunds(
     data: DepositSandboxFundsRequest,
     metadata: Metadata,
-  ): Promise<BalanceResponse> {
+  ): Promise<DepositSandboxFundsResponse> {
     authorizeM2MCaller(metadata, BALANCES_AUTHORIZED_M2M_CALLERS);
     const account = await this.balancesService.depositSandboxFunds(data);
-    return this.mapToBalanceResponse(account);
+    return { balance: this.mapToBalanceResponse(account) };
   }
 
   @GrpcMethod(ACCOUNTS_SERVICE_NAME, 'LockBalance')
-  async lockBalance(data: LockBalanceRequest, metadata: Metadata): Promise<BalanceResponse> {
+  async lockBalance(data: LockBalanceRequest, metadata: Metadata): Promise<LockBalanceResponse> {
     authorizeM2MCaller(metadata, BALANCES_AUTHORIZED_M2M_CALLERS);
     const account = await this.balancesService.lockBalance(data);
-    return this.mapToBalanceResponse(account);
+    return { balance: this.mapToBalanceResponse(account) };
   }
 
   @GrpcMethod(ACCOUNTS_SERVICE_NAME, 'UnlockBalance')
-  async unlockBalance(data: UnlockBalanceRequest, metadata: Metadata): Promise<BalanceResponse> {
+  async unlockBalance(
+    data: UnlockBalanceRequest,
+    metadata: Metadata,
+  ): Promise<UnlockBalanceResponse> {
     authorizeM2MCaller(metadata, BALANCES_AUTHORIZED_M2M_CALLERS);
     const account = await this.balancesService.unlockBalance(data);
-    return this.mapToBalanceResponse(account);
+    return { balance: this.mapToBalanceResponse(account) };
   }
 
   private mapToBalanceResponse(account: Account): BalanceResponse {
