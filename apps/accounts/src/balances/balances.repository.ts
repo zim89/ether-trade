@@ -16,8 +16,9 @@ import {
   LedgerTransaction,
 } from '../database/schema/ledger-transactions.schema';
 import { BALANCES_ERRORS } from './balances.constants';
-import type {
+import {
   BalanceMutationResult,
+  BalanceMutationStatus,
   DepositParams,
   CreditDepositParams,
   DebitWithdrawalParams,
@@ -143,7 +144,7 @@ export class BalancesRepository {
       }
 
       if (!account) {
-        return { status: 'not_found' };
+        return { status: BalanceMutationStatus.NOT_FOUND };
       }
 
       const [updatedAccount] = await tx
@@ -185,7 +186,7 @@ export class BalancesRepository {
         throw err;
       }
 
-      return { status: 'ok', account: updatedAccount };
+      return { status: BalanceMutationStatus.OK, account: updatedAccount };
     });
   }
 
@@ -213,7 +214,7 @@ export class BalancesRepository {
         .for(PG_LOCK_STRENGTH.update);
 
       if (!account) {
-        return { status: 'not_found' };
+        return { status: BalanceMutationStatus.NOT_FOUND };
       }
 
       const [updatedAccount] = await tx
@@ -230,7 +231,7 @@ export class BalancesRepository {
 
       if (!updatedAccount) {
         return {
-          status: 'insufficient_available',
+          status: BalanceMutationStatus.INSUFFICIENT_AVAILABLE,
           available: account.availableBalance,
         };
       }
@@ -265,7 +266,7 @@ export class BalancesRepository {
         throw err;
       }
 
-      return { status: 'ok', account: updatedAccount };
+      return { status: BalanceMutationStatus.OK, account: updatedAccount };
     });
   }
 
@@ -293,7 +294,7 @@ export class BalancesRepository {
         .for(PG_LOCK_STRENGTH.update);
 
       if (!account) {
-        return { status: 'not_found' };
+        return { status: BalanceMutationStatus.NOT_FOUND };
       }
 
       const [updatedAccount] = await tx
@@ -310,7 +311,7 @@ export class BalancesRepository {
 
       if (!updatedAccount) {
         return {
-          status: 'insufficient_locked',
+          status: BalanceMutationStatus.INSUFFICIENT_LOCKED,
           locked: account.lockedBalance,
         };
       }
@@ -345,7 +346,7 @@ export class BalancesRepository {
         throw err;
       }
 
-      return { status: 'ok', account: updatedAccount };
+      return { status: BalanceMutationStatus.OK, account: updatedAccount };
     });
   }
 
@@ -395,7 +396,7 @@ export class BalancesRepository {
       }
 
       if (!account) {
-        return { status: 'not_found' };
+        return { status: BalanceMutationStatus.NOT_FOUND };
       }
 
       const [updatedAccount] = await tx
@@ -437,7 +438,7 @@ export class BalancesRepository {
         throw err;
       }
 
-      return { status: 'ok', account: updatedAccount };
+      return { status: BalanceMutationStatus.OK, account: updatedAccount };
     });
   }
 
@@ -465,7 +466,7 @@ export class BalancesRepository {
         .for(PG_LOCK_STRENGTH.update);
 
       if (!account) {
-        return { status: 'not_found' };
+        return { status: BalanceMutationStatus.NOT_FOUND };
       }
 
       const [updatedAccount] = await tx
@@ -481,7 +482,7 @@ export class BalancesRepository {
 
       if (!updatedAccount) {
         return {
-          status: 'insufficient_locked',
+          status: BalanceMutationStatus.INSUFFICIENT_LOCKED,
           locked: account.lockedBalance,
         };
       }
@@ -516,7 +517,7 @@ export class BalancesRepository {
         throw err;
       }
 
-      return { status: 'ok', account: updatedAccount };
+      return { status: BalanceMutationStatus.OK, account: updatedAccount };
     });
   }
 
@@ -553,7 +554,7 @@ export class BalancesRepository {
     const typeMatches = existingTx.type === params.expectedType;
 
     if (!amountMatches || !currencyMatches || !typeMatches) {
-      return { status: 'idempotency_payload_mismatch' };
+      return { status: BalanceMutationStatus.IDEMPOTENCY_PAYLOAD_MISMATCH };
     }
 
     const [currentAccount] = await tx
@@ -563,9 +564,9 @@ export class BalancesRepository {
       .limit(1);
 
     if (!currentAccount) {
-      return { status: 'not_found' };
+      return { status: BalanceMutationStatus.NOT_FOUND };
     }
 
-    return { status: 'idempotent_replay', account: currentAccount };
+    return { status: BalanceMutationStatus.IDEMPOTENT_REPLAY, account: currentAccount };
   }
 }

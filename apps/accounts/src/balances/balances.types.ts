@@ -38,16 +38,28 @@ export interface DebitWithdrawalParams extends DepositParams {
 }
 
 /**
+ * Status of a balance mutation operation.
+ */
+export enum BalanceMutationStatus {
+  OK = 'ok',
+  IDEMPOTENT_REPLAY = 'idempotent_replay',
+  NOT_FOUND = 'not_found',
+  INSUFFICIENT_AVAILABLE = 'insufficient_available',
+  INSUFFICIENT_LOCKED = 'insufficient_locked',
+  IDEMPOTENCY_PAYLOAD_MISMATCH = 'idempotency_payload_mismatch',
+}
+
+/**
  * Discriminated result of a balance mutation executed inside the repository.
  * Transport exceptions are thrown by the service layer, not the repository.
  */
 export type BalanceMutationResult =
-  | { status: 'ok'; account: Account }
-  | { status: 'idempotent_replay'; account: Account }
-  | { status: 'not_found' }
-  | { status: 'insufficient_available'; available: string }
-  | { status: 'insufficient_locked'; locked: string }
-  | { status: 'idempotency_payload_mismatch' };
+  | { status: BalanceMutationStatus.OK; account: Account }
+  | { status: BalanceMutationStatus.IDEMPOTENT_REPLAY; account: Account }
+  | { status: BalanceMutationStatus.NOT_FOUND }
+  | { status: BalanceMutationStatus.INSUFFICIENT_AVAILABLE; available: string }
+  | { status: BalanceMutationStatus.INSUFFICIENT_LOCKED; locked: string }
+  | { status: BalanceMutationStatus.IDEMPOTENCY_PAYLOAD_MISMATCH };
 
 export type ExpectedLedgerType =
   | typeof LedgerTransactionType.DEPOSIT

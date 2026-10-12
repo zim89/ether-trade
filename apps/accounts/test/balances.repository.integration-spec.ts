@@ -1,6 +1,7 @@
 import { Currency } from '@app/common/constants';
 import { DbTestContext } from '../../../test/helpers';
 import { BalancesRepository } from '../src/balances/balances.repository';
+import { BalanceMutationStatus } from '../src/balances/balances.types';
 import * as schema from '../src/database/schema';
 
 describe('BalancesRepository (Integration)', () => {
@@ -57,8 +58,8 @@ describe('BalancesRepository (Integration)', () => {
         idempotencyKey: 'idemp-dep-1',
       });
 
-      expect(result.status).toBe('ok');
-      if (result.status === 'ok') {
+      expect(result.status).toBe(BalanceMutationStatus.OK);
+      if (result.status === BalanceMutationStatus.OK) {
         expect(result.account.availableBalance).toBe('100.50000000');
         expect(result.account.lockedBalance).toBe('0.00000000');
       }
@@ -70,8 +71,8 @@ describe('BalancesRepository (Integration)', () => {
         amount: '100.50000000',
         idempotencyKey: 'idemp-dep-1',
       });
-      expect(replay.status).toBe('idempotent_replay');
-      if (replay.status === 'idempotent_replay') {
+      expect(replay.status).toBe(BalanceMutationStatus.IDEMPOTENT_REPLAY);
+      if (replay.status === BalanceMutationStatus.IDEMPOTENT_REPLAY) {
         expect(replay.account.availableBalance).toBe('100.50000000');
       }
     });
@@ -96,8 +97,8 @@ describe('BalancesRepository (Integration)', () => {
         idempotencyKey: 'lock-1',
       });
 
-      expect(lockRes.status).toBe('ok');
-      if (lockRes.status === 'ok') {
+      expect(lockRes.status).toBe(BalanceMutationStatus.OK);
+      if (lockRes.status === BalanceMutationStatus.OK) {
         expect(lockRes.account.availableBalance).toBe('60.00000000');
         expect(lockRes.account.lockedBalance).toBe('40.00000000');
 
@@ -115,7 +116,7 @@ describe('BalancesRepository (Integration)', () => {
         idempotencyKey: 'lock-fail',
       });
 
-      expect(lockRes.status).toBe('insufficient_available');
+      expect(lockRes.status).toBe(BalanceMutationStatus.INSUFFICIENT_AVAILABLE);
 
       const account = await repository.findByUserAndCurrency(testUserId, Currency.USDT);
       expect(account?.availableBalance).toBe('100.00000000');
@@ -137,8 +138,8 @@ describe('BalancesRepository (Integration)', () => {
         idempotencyKey: 'unlock-1',
       });
 
-      expect(unlockRes.status).toBe('ok');
-      if (unlockRes.status === 'ok') {
+      expect(unlockRes.status).toBe(BalanceMutationStatus.OK);
+      if (unlockRes.status === BalanceMutationStatus.OK) {
         expect(unlockRes.account.availableBalance).toBe('70.00000000');
         expect(unlockRes.account.lockedBalance).toBe('30.00000000');
       }
@@ -155,8 +156,8 @@ describe('BalancesRepository (Integration)', () => {
         referenceId: '0xtxhash123',
       });
 
-      expect(creditRes.status).toBe('ok');
-      if (creditRes.status === 'ok') {
+      expect(creditRes.status).toBe(BalanceMutationStatus.OK);
+      if (creditRes.status === BalanceMutationStatus.OK) {
         expect(creditRes.account.currency).toBe(Currency.ETH);
         expect(creditRes.account.availableBalance).toBe('2.50000000');
         expect(creditRes.account.lockedBalance).toBe('0.00000000');
@@ -189,8 +190,8 @@ describe('BalancesRepository (Integration)', () => {
         referenceId: '0xwithdrawtx',
       });
 
-      expect(debitRes.status).toBe('ok');
-      if (debitRes.status === 'ok') {
+      expect(debitRes.status).toBe(BalanceMutationStatus.OK);
+      if (debitRes.status === BalanceMutationStatus.OK) {
         expect(debitRes.account.availableBalance).toBe('6.00000000');
         expect(debitRes.account.lockedBalance).toBe('0.00000000');
       }

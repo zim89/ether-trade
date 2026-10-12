@@ -23,7 +23,7 @@ import {
   AMOUNT_REGEX,
 } from './balances.constants';
 import { BalancesRepository } from './balances.repository';
-import type { BalanceMutationResult } from './balances.types';
+import { BalanceMutationResult, BalanceMutationStatus } from './balances.types';
 
 BigNumber.config({ DECIMAL_PLACES: DECIMAL_SCALE, ROUNDING_MODE: BigNumber.ROUND_DOWN });
 
@@ -252,15 +252,15 @@ export class BalancesService {
     ctx: { amount: string; userId: string; currency: Currency },
   ): Account {
     switch (result.status) {
-      case 'ok':
-      case 'idempotent_replay':
+      case BalanceMutationStatus.OK:
+      case BalanceMutationStatus.IDEMPOTENT_REPLAY:
         return result.account;
-      case 'not_found':
+      case BalanceMutationStatus.NOT_FOUND:
         throw new NotFoundException({
           message: BALANCES_ERRORS.accountNotFound(ctx.userId, ctx.currency),
           errorCode: BALANCES_ERROR_CODES.accountNotFound,
         });
-      case 'insufficient_available':
+      case BalanceMutationStatus.INSUFFICIENT_AVAILABLE:
         throw new RpcException({
           code: GrpcStatus.FAILED_PRECONDITION,
           message: BALANCES_ERRORS.insufficientAvailableBalance(result.available, ctx.amount),
@@ -269,7 +269,7 @@ export class BalancesService {
             BALANCES_ERROR_CODES.insufficientBalance,
           ),
         });
-      case 'insufficient_locked':
+      case BalanceMutationStatus.INSUFFICIENT_LOCKED:
         throw new RpcException({
           code: GrpcStatus.FAILED_PRECONDITION,
           message: BALANCES_ERRORS.insufficientLockedBalance(result.locked, ctx.amount),
@@ -278,7 +278,7 @@ export class BalancesService {
             BALANCES_ERROR_CODES.insufficientLockedBalance,
           ),
         });
-      case 'idempotency_payload_mismatch':
+      case BalanceMutationStatus.IDEMPOTENCY_PAYLOAD_MISMATCH:
         throw new BadRequestException({
           message: BALANCES_ERRORS.idempotencyKeyPayloadMismatch,
           errorCode: BALANCES_ERROR_CODES.idempotencyKeyPayloadMismatch,
