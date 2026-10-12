@@ -1,6 +1,7 @@
 import { ACCOUNTS_PACKAGE_NAME, ACCOUNTS_SERVICE_NAME } from './generated/accounts.pb';
 import { IDENTITY_PACKAGE_NAME, IDENTITY_SERVICE_NAME } from './generated/identity.pb';
 import { ORDERS_PACKAGE_NAME, ORDERS_SERVICE_NAME } from './generated/orders.pb';
+import { TRANSFERS_PACKAGE_NAME, TRANSFERS_SERVICE_NAME } from './generated/transfers.pb';
 
 /**
  * gRPC protobuf package names sourced directly from generated `*_PACKAGE_NAME` constants.
@@ -10,6 +11,7 @@ export const PROTO_PACKAGES = {
   identity: IDENTITY_PACKAGE_NAME,
   accounts: ACCOUNTS_PACKAGE_NAME,
   orders: ORDERS_PACKAGE_NAME,
+  transfers: TRANSFERS_PACKAGE_NAME,
 } as const;
 
 export type ProtoPackageName = (typeof PROTO_PACKAGES)[keyof typeof PROTO_PACKAGES];
@@ -22,6 +24,7 @@ export const PROTO_SERVICES = {
   identity: IDENTITY_SERVICE_NAME,
   accounts: ACCOUNTS_SERVICE_NAME,
   orders: ORDERS_SERVICE_NAME,
+  transfers: TRANSFERS_SERVICE_NAME,
 } as const;
 
 export type ProtoServiceName = (typeof PROTO_SERVICES)[keyof typeof PROTO_SERVICES];
@@ -55,6 +58,14 @@ export const GRPC_SERVICES_CONFIG = {
     packageName: PROTO_PACKAGES.orders,
     serviceName: PROTO_SERVICES.orders,
   },
+  transfers: {
+    key: 'transfers',
+    port: 50054,
+    defaultUrl: '0.0.0.0:50054',
+    protoRelativePath: 'libs/contracts/proto/transfers.proto',
+    packageName: PROTO_PACKAGES.transfers,
+    serviceName: PROTO_SERVICES.transfers,
+  },
 } as const;
 
 export type GrpcServiceKey = keyof typeof GRPC_SERVICES_CONFIG;
@@ -66,13 +77,14 @@ export const GRPC_SERVICE_KEYS = {
   identity: 'identity',
   accounts: 'accounts',
   orders: 'orders',
+  transfers: 'transfers',
 } as const satisfies Record<GrpcServiceKey, GrpcServiceKey>;
 
 /**
  * Standard gRPC Metadata header keys for East-West inter-service communication (M2M).
  */
 export const GRPC_METADATA_KEYS = {
-  /** Identifier of the calling service (e.g. 'api-gateway', 'blockchain-worker', 'orders') */
+  /** Identifier of the calling service (e.g. 'api-gateway', 'blockchain-worker', 'orders', 'transfers') */
   serviceId: 'x-service-id',
   /** Optional caller user ID when request is executed on behalf of a user */
   callerId: 'x-caller-id',
@@ -89,6 +101,7 @@ export const SERVICE_CALLER_IDS = {
   ordersService: 'orders-service',
   identityService: 'identity-service',
   accountsService: 'accounts-service',
+  transfersService: 'transfers-service',
 } as const;
 
 export type ServiceCallerId = (typeof SERVICE_CALLER_IDS)[keyof typeof SERVICE_CALLER_IDS];

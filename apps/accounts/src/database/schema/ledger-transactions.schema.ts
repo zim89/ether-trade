@@ -16,6 +16,8 @@ export const ledgerTransactionTypeEnum = pgEnum('ledger_transaction_type', [
   LedgerTransactionType.DEPOSIT,
   LedgerTransactionType.LOCK,
   LedgerTransactionType.UNLOCK,
+  LedgerTransactionType.ON_CHAIN_DEPOSIT,
+  LedgerTransactionType.WITHDRAWAL,
 ]);
 
 export const ledgerTransactionStatusEnum = pgEnum('ledger_transaction_status', [

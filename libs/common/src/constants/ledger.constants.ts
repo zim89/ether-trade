@@ -5,6 +5,8 @@ export enum LedgerTransactionType {
   DEPOSIT = 'deposit',
   LOCK = 'lock',
   UNLOCK = 'unlock',
+  ON_CHAIN_DEPOSIT = 'on_chain_deposit',
+  WITHDRAWAL = 'withdrawal',
 }
 
 /**

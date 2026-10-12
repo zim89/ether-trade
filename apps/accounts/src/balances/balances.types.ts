@@ -24,6 +24,20 @@ export interface LockParams extends DepositParams {
 export type UnlockParams = LockParams;
 
 /**
+ * Parameters for crediting confirmed on-chain deposit funds.
+ */
+export interface CreditDepositParams extends DepositParams {
+  referenceId?: string;
+}
+
+/**
+ * Parameters for debiting confirmed on-chain withdrawal funds.
+ */
+export interface DebitWithdrawalParams extends DepositParams {
+  referenceId?: string;
+}
+
+/**
  * Discriminated result of a balance mutation executed inside the repository.
  * Transport exceptions are thrown by the service layer, not the repository.
  */
@@ -38,4 +52,6 @@ export type BalanceMutationResult =
 export type ExpectedLedgerType =
   | typeof LedgerTransactionType.DEPOSIT
   | typeof LedgerTransactionType.LOCK
-  | typeof LedgerTransactionType.UNLOCK;
+  | typeof LedgerTransactionType.UNLOCK
+  | typeof LedgerTransactionType.ON_CHAIN_DEPOSIT
+  | typeof LedgerTransactionType.WITHDRAWAL;

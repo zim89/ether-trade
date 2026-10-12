@@ -5,11 +5,11 @@
 // source: identity/v1/identity.proto
 
 /* eslint-disable */
-import type { Metadata } from "@grpc/grpc-js";
-import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
-import { Observable } from "rxjs";
+import type { Metadata } from '@grpc/grpc-js';
+import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
+import { Observable } from 'rxjs';
 
-export const protobufPackage = "identity.v1";
+export const protobufPackage = 'identity.v1';
 
 export interface GetNonceRequest {
   walletAddress: string;
@@ -87,7 +87,7 @@ export interface SandboxLoginRequest {
   role: string;
 }
 
-export const IDENTITY_V1_PACKAGE_NAME = "identity.v1";
+export const IDENTITY_V1_PACKAGE_NAME = 'identity.v1';
 
 export interface IdentityServiceClient {
   /** Generates a single-use SIWE nonce for a wallet address */
@@ -114,7 +114,10 @@ export interface IdentityServiceClient {
 
   /** Internal token validation */
 
-  validateToken(request: ValidateTokenRequest, metadata?: Metadata): Observable<ValidateTokenResponse>;
+  validateToken(
+    request: ValidateTokenRequest,
+    metadata?: Metadata,
+  ): Observable<ValidateTokenResponse>;
 
   /** Updates user role (admin/dev sandbox) */
 
@@ -191,28 +194,32 @@ export interface IdentityServiceController {
 export function IdentityServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      "getNonce",
-      "verifySiwe",
-      "refreshTokens",
-      "logout",
-      "getUserById",
-      "getUserByAddress",
-      "validateToken",
-      "updateUserRole",
-      "sandboxLogin",
+      'getNonce',
+      'verifySiwe',
+      'refreshTokens',
+      'logout',
+      'getUserById',
+      'getUserByAddress',
+      'validateToken',
+      'updateUserRole',
+      'sandboxLogin',
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod("IdentityService", method)(constructor.prototype[method], method, descriptor);
+      GrpcMethod('IdentityService', method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod("IdentityService", method)(constructor.prototype[method], method, descriptor);
+      GrpcStreamMethod('IdentityService', method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
   };
 }
 
-export const IDENTITY_SERVICE_NAME = "IdentityService";
+export const IDENTITY_SERVICE_NAME = 'IdentityService';

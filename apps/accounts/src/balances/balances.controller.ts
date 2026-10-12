@@ -11,6 +11,10 @@ import {
   type LockBalanceResponse,
   type UnlockBalanceRequest,
   type UnlockBalanceResponse,
+  type CreditDepositFundsRequest,
+  type CreditDepositFundsResponse,
+  type DebitWithdrawalFundsRequest,
+  type DebitWithdrawalFundsResponse,
   type BalanceResponse,
   ACCOUNTS_SERVICE_NAME,
 } from '@app/contracts';
@@ -52,6 +56,26 @@ export class BalancesController {
   ): Promise<UnlockBalanceResponse> {
     authorizeM2MCaller(metadata, BALANCES_AUTHORIZED_M2M_CALLERS);
     const account = await this.balancesService.unlockBalance(data);
+    return { balance: this.mapToBalanceResponse(account) };
+  }
+
+  @GrpcMethod(ACCOUNTS_SERVICE_NAME, 'CreditDepositFunds')
+  async creditDepositFunds(
+    data: CreditDepositFundsRequest,
+    metadata: Metadata,
+  ): Promise<CreditDepositFundsResponse> {
+    authorizeM2MCaller(metadata, BALANCES_AUTHORIZED_M2M_CALLERS);
+    const account = await this.balancesService.creditDepositFunds(data);
+    return { balance: this.mapToBalanceResponse(account) };
+  }
+
+  @GrpcMethod(ACCOUNTS_SERVICE_NAME, 'DebitWithdrawalFunds')
+  async debitWithdrawalFunds(
+    data: DebitWithdrawalFundsRequest,
+    metadata: Metadata,
+  ): Promise<DebitWithdrawalFundsResponse> {
+    authorizeM2MCaller(metadata, BALANCES_AUTHORIZED_M2M_CALLERS);
+    const account = await this.balancesService.debitWithdrawalFunds(data);
     return { balance: this.mapToBalanceResponse(account) };
   }
 

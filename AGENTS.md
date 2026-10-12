@@ -68,6 +68,7 @@
   - Commits: Conventional Commits in English (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`).
   - Comments: Concise, explaining *why*, not *what*, per [comments-guide.md](../_docs-hub/01-rules/comments-guide.md).
   - Naming: Enums / const objects per [naming-conventions.md](../_docs-hub/01-rules/naming-conventions.md).
+- **Temporary Scripts:** Any temporary, one-off, diagnostic, or verification scripts MUST be placed strictly in `scripts/temp/` (ignored by git). Never create ad-hoc temporary scripts in the root `scripts/` folder or service folders.
 - Reference project core standards in `../_docs-project/backend/core/`.
 - Implementation plans are tracked in `../_docs-project/backend/plans/`.
 - As-built service/flow docs: `../_docs-project/backend/architecture/`.

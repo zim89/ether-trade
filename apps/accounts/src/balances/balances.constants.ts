@@ -12,6 +12,7 @@ export const BALANCES_AUTHORIZED_M2M_CALLERS = [
   SERVICE_CALLER_IDS.apiGateway,
   SERVICE_CALLER_IDS.blockchainWorker,
   SERVICE_CALLER_IDS.ordersService,
+  SERVICE_CALLER_IDS.transfersService,
 ] as const;
 
 export const BALANCES_ERROR_CODES = {
@@ -56,4 +57,8 @@ export const BALANCES_LOGS = {
     `Lock requested for user ${userId}: ${amount} ${currency}`,
   unlockRequested: (userId: string, amount: string, currency: string) =>
     `Unlock requested for user ${userId}: ${amount} ${currency}`,
+  creditDepositRequested: (userId: string, amount: string, currency: string) =>
+    `Credit deposit requested for user ${userId}: +${amount} ${currency}`,
+  debitWithdrawalRequested: (userId: string, amount: string, currency: string) =>
+    `Debit withdrawal requested for user ${userId}: -${amount} ${currency}`,
 } as const;

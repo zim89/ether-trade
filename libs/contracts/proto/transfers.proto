@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package transfers;
+
+service TransfersService {
+  rpc GetDepositAddress (GetDepositAddressRequest) returns (GetDepositAddressResponse);
+  rpc RequestWithdrawal (RequestWithdrawalRequest) returns (RequestWithdrawalResponse);
+  rpc GetWithdrawalById (GetWithdrawalByIdRequest) returns (GetWithdrawalByIdResponse);
+  rpc GetWithdrawalHistory (GetWithdrawalHistoryRequest) returns (GetWithdrawalHistoryResponse);
+}
+
+message GetDepositAddressRequest {
+  string user_id = 1;
+}
+
+message GetDepositAddressResponse {
+  string vault_address = 1;
+  string user_id = 2;
+  string user_id_bytes16 = 3;
+}
+
+message RequestWithdrawalRequest {
+  string user_id = 1;
+  string amount = 2;              // Decimal string (e.g. "100.00000000")
+  string currency = 3;            // "ETH" | "USDT"
+  string destination_address = 4; // 0x... EVM address
+  string idempotency_key = 5;
+}
+
+message GetWithdrawalByIdRequest {
+  string withdrawal_id = 1;
+  string user_id = 2;
+}
+
+message GetWithdrawalHistoryRequest {
+  string user_id = 1;
+  optional string status = 2;
+  optional int32 limit = 3;
+  optional int32 offset = 4;
+}
+
+message WithdrawalItem {
+  string id = 1;
+  string user_id = 2;
+  string destination_address = 3;
+  string currency = 4;
+  string amount = 5;
+  optional string tx_hash = 6;
+  optional int32 nonce = 7;
+  string status = 8;              // "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+  optional string error_message = 9;
+  string idempotency_key = 10;
+  int64 created_at = 11;          // Unix seconds
+  optional int64 processed_at = 12; // Unix seconds
+}
+
+message RequestWithdrawalResponse {
+  WithdrawalItem withdrawal = 1;
+}
+
+message GetWithdrawalByIdResponse {
+  WithdrawalItem withdrawal = 1;
+}
+
+message GetWithdrawalHistoryResponse {
+  repeated WithdrawalItem withdrawals = 1;
+  int32 total = 2;
+}

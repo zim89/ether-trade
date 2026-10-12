@@ -10,6 +10,8 @@ import type {
   DepositSandboxFundsRequest,
   LockBalanceRequest,
   UnlockBalanceRequest,
+  CreditDepositFundsRequest,
+  DebitWithdrawalFundsRequest,
 } from '@app/contracts';
 import { Account } from '../database/schema/accounts.schema';
 import {
@@ -189,6 +191,52 @@ export class BalancesService {
     this.logger.log(BALANCES_LOGS.unlockRequested(userId, amount, currency));
 
     const result = await this.balancesRepository.unlock({
+      userId,
+      currency,
+      amount,
+      idempotencyKey,
+      referenceId,
+    });
+
+    return this.mapMutationResult(result, { amount, userId, currency });
+  }
+
+  /**
+   * Credits confirmed on-chain deposit funds to user's available balance.
+   */
+  async creditDepositFunds(data: CreditDepositFundsRequest): Promise<Account> {
+    const userId = this.validateUserId(data.userId);
+    const currency = this.normalizeCurrency(data.currency);
+    const amount = this.validateAmount(data.amount);
+    const idempotencyKey = this.requireIdempotencyKey(data.idempotencyKey);
+    const referenceId = data.referenceId?.trim() || undefined;
+
+    this.logger.log(BALANCES_LOGS.creditDepositRequested(userId, amount, currency));
+
+    const result = await this.balancesRepository.creditDeposit({
+      userId,
+      currency,
+      amount,
+      idempotencyKey,
+      referenceId,
+    });
+
+    return this.mapMutationResult(result, { amount, userId, currency });
+  }
+
+  /**
+   * Debits confirmed on-chain withdrawal funds from user's locked balance.
+   */
+  async debitWithdrawalFunds(data: DebitWithdrawalFundsRequest): Promise<Account> {
+    const userId = this.validateUserId(data.userId);
+    const currency = this.normalizeCurrency(data.currency);
+    const amount = this.validateAmount(data.amount);
+    const idempotencyKey = this.requireIdempotencyKey(data.idempotencyKey);
+    const referenceId = data.referenceId?.trim() || undefined;
+
+    this.logger.log(BALANCES_LOGS.debitWithdrawalRequested(userId, amount, currency));
+
+    const result = await this.balancesRepository.debitWithdrawal({
       userId,
       currency,
       amount,

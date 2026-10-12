@@ -19,6 +19,8 @@ import { BALANCES_ERRORS } from './balances.constants';
 import type {
   BalanceMutationResult,
   DepositParams,
+  CreditDepositParams,
+  DebitWithdrawalParams,
   ExpectedLedgerType,
   LockParams,
   UnlockParams,
@@ -335,6 +337,177 @@ export class BalancesRepository {
             amount,
             currency,
             expectedType: LedgerTransactionType.UNLOCK,
+          });
+          if (concurrentReplay) {
+            return concurrentReplay;
+          }
+        }
+        throw err;
+      }
+
+      return { status: 'ok', account: updatedAccount };
+    });
+  }
+
+  /**
+   * Credits confirmed on-chain deposit to account's available balance (Double-Entry: ON_CHAIN_DEPOSIT).
+   */
+  async creditDeposit(params: CreditDepositParams): Promise<BalanceMutationResult> {
+    const { userId, currency, amount, idempotencyKey, referenceId } = params;
+
+    return await this.db.transaction(async (tx) => {
+      const replay = await this.resolveIdempotencyReplay(tx, {
+        idempotencyKey,
+        amount,
+        currency,
+        expectedType: LedgerTransactionType.ON_CHAIN_DEPOSIT,
+      });
+      if (replay) {
+        return replay;
+      }
+
+      let [account] = await tx
+        .select()
+        .from(accounts)
+        .where(and(eq(accounts.userId, userId), eq(accounts.currency, currency)))
+        .for(PG_LOCK_STRENGTH.update);
+
+      if (!account) {
+        try {
+          const [created] = await tx
+            .insert(accounts)
+            .values({
+              userId,
+              currency,
+              availableBalance: '0',
+              lockedBalance: '0',
+            })
+            .returning();
+          account = created;
+        } catch {
+          const [lockedAccount] = await tx
+            .select()
+            .from(accounts)
+            .where(and(eq(accounts.userId, userId), eq(accounts.currency, currency)))
+            .for(PG_LOCK_STRENGTH.update);
+          account = lockedAccount;
+        }
+      }
+
+      if (!account) {
+        return { status: 'not_found' };
+      }
+
+      const [updatedAccount] = await tx
+        .update(accounts)
+        .set({
+          availableBalance: sql`${accounts.availableBalance} + ${amount}::numeric`,
+          updatedAt: new Date(),
+        })
+        .where(eq(accounts.id, account.id))
+        .returning();
+
+      try {
+        await tx.insert(ledgerTransactions).values({
+          accountId: updatedAccount.id,
+          userId,
+          currency,
+          type: LedgerTransactionType.ON_CHAIN_DEPOSIT,
+          status: LedgerTransactionStatus.COMPLETED,
+          amount,
+          availableDelta: amount,
+          lockedDelta: '0',
+          balanceAfterAvailable: updatedAccount.availableBalance,
+          balanceAfterLocked: updatedAccount.lockedBalance,
+          idempotencyKey,
+          referenceId: referenceId || null,
+        });
+      } catch (err: unknown) {
+        if (this.isIdempotencyUniqueViolation(err)) {
+          const concurrentReplay = await this.resolveIdempotencyReplay(tx, {
+            idempotencyKey,
+            amount,
+            currency,
+            expectedType: LedgerTransactionType.ON_CHAIN_DEPOSIT,
+          });
+          if (concurrentReplay) {
+            return concurrentReplay;
+          }
+        }
+        throw err;
+      }
+
+      return { status: 'ok', account: updatedAccount };
+    });
+  }
+
+  /**
+   * Debits confirmed on-chain withdrawal from account's locked balance (Double-Entry: WITHDRAWAL).
+   */
+  async debitWithdrawal(params: DebitWithdrawalParams): Promise<BalanceMutationResult> {
+    const { userId, currency, amount, idempotencyKey, referenceId } = params;
+
+    return await this.db.transaction(async (tx) => {
+      const replay = await this.resolveIdempotencyReplay(tx, {
+        idempotencyKey,
+        amount,
+        currency,
+        expectedType: LedgerTransactionType.WITHDRAWAL,
+      });
+      if (replay) {
+        return replay;
+      }
+
+      const [account] = await tx
+        .select()
+        .from(accounts)
+        .where(and(eq(accounts.userId, userId), eq(accounts.currency, currency)))
+        .for(PG_LOCK_STRENGTH.update);
+
+      if (!account) {
+        return { status: 'not_found' };
+      }
+
+      const [updatedAccount] = await tx
+        .update(accounts)
+        .set({
+          lockedBalance: sql`${accounts.lockedBalance} - ${amount}::numeric`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(eq(accounts.id, account.id), sql`${accounts.lockedBalance} >= ${amount}::numeric`),
+        )
+        .returning();
+
+      if (!updatedAccount) {
+        return {
+          status: 'insufficient_locked',
+          locked: account.lockedBalance,
+        };
+      }
+
+      try {
+        await tx.insert(ledgerTransactions).values({
+          accountId: updatedAccount.id,
+          userId,
+          currency,
+          type: LedgerTransactionType.WITHDRAWAL,
+          status: LedgerTransactionStatus.COMPLETED,
+          amount,
+          availableDelta: '0',
+          lockedDelta: `-${amount}`,
+          balanceAfterAvailable: updatedAccount.availableBalance,
+          balanceAfterLocked: updatedAccount.lockedBalance,
+          idempotencyKey,
+          referenceId: referenceId || null,
+        });
+      } catch (err: unknown) {
+        if (this.isIdempotencyUniqueViolation(err)) {
+          const concurrentReplay = await this.resolveIdempotencyReplay(tx, {
+            idempotencyKey,
+            amount,
+            currency,
+            expectedType: LedgerTransactionType.WITHDRAWAL,
           });
           if (concurrentReplay) {
             return concurrentReplay;

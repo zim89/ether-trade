@@ -14,6 +14,12 @@ service AccountsService {
 
   // Moves funds locked → available (release reserve)
   rpc UnlockBalance (UnlockBalanceRequest) returns (UnlockBalanceResponse);
+
+  // Credits confirmed on-chain deposit to available_balance (Double-Entry: ON_CHAIN_DEPOSIT)
+  rpc CreditDepositFunds (CreditDepositFundsRequest) returns (CreditDepositFundsResponse);
+
+  // Debits confirmed on-chain withdrawal from locked_balance (Double-Entry: WITHDRAWAL)
+  rpc DebitWithdrawalFunds (DebitWithdrawalFundsRequest) returns (DebitWithdrawalFundsResponse);
 }
 
 message GetBalanceRequest {
@@ -57,6 +63,30 @@ message UnlockBalanceRequest {
 }
 
 message UnlockBalanceResponse {
+  BalanceResponse balance = 1;
+}
+
+message CreditDepositFundsRequest {
+  string user_id = 1;
+  string amount = 2;            // positive decimal string
+  string currency = 3;          // "ETH" | "USDT"
+  string idempotency_key = 4;   // e.g. tx_hash or composite key
+  string reference_id = 5;      // e.g. tx_hash or deposit id
+}
+
+message CreditDepositFundsResponse {
+  BalanceResponse balance = 1;
+}
+
+message DebitWithdrawalFundsRequest {
+  string user_id = 1;
+  string amount = 2;            // positive decimal string
+  string currency = 3;          // "ETH" | "USDT"
+  string idempotency_key = 4;   // e.g. withdrawal_id or tx_hash
+  string reference_id = 5;      // e.g. tx_hash or withdrawal request id
+}
+
+message DebitWithdrawalFundsResponse {
   BalanceResponse balance = 1;
 }
 

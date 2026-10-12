@@ -16,6 +16,10 @@ export {
   type LockBalanceResponse,
   type UnlockBalanceRequest,
   type UnlockBalanceResponse,
+  type CreditDepositFundsRequest,
+  type CreditDepositFundsResponse,
+  type DebitWithdrawalFundsRequest,
+  type DebitWithdrawalFundsResponse,
   type BalanceResponse,
 } from './generated/accounts.pb';
 
@@ -39,4 +43,22 @@ export {
   type OrderBookLevel,
 } from './generated/orders.pb';
 
+export {
+  TRANSFERS_PACKAGE_NAME,
+  TRANSFERS_SERVICE_NAME,
+  TransfersServiceControllerMethods,
+  type TransfersServiceClient,
+  type TransfersServiceController,
+  type GetDepositAddressRequest,
+  type GetDepositAddressResponse,
+  type RequestWithdrawalRequest,
+  type RequestWithdrawalResponse,
+  type GetWithdrawalByIdRequest,
+  type GetWithdrawalByIdResponse,
+  type GetWithdrawalHistoryRequest,
+  type GetWithdrawalHistoryResponse,
+  type WithdrawalItem,
+} from './generated/transfers.pb';
+
 export * from './orders.types';
+export * from './transfers';

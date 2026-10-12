@@ -64,6 +64,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/orders/tsconfig.app.json"
       }
+    },
+    "transfers": {
+      "type": "application",
+      "root": "apps/transfers",
+      "entryFile": "main",
+      "sourceRoot": "apps/transfers/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/transfers/tsconfig.app.json"
+      }
     }
   }
 }
