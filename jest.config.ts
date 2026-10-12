@@ -5,6 +5,7 @@ const baseConfig: Partial<Config> = {
   rootDir: '.',
   testEnvironment: 'node',
   moduleNameMapper: {
+    '^uuid$': '<rootDir>/test/mocks/uuid.ts',
     '^@app/common/(.*)$': '<rootDir>/libs/common/src/$1',
     '^@app/common$': '<rootDir>/libs/common/src/index.ts',
     '^@app/contracts/(.*)$': '<rootDir>/libs/contracts/src/$1',
