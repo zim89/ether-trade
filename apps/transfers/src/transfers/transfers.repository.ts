@@ -1,5 +1,6 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { and, desc, eq, sql } from 'drizzle-orm';
+import { DepositStatus, WithdrawalStatus } from '@app/contracts';
 import { DRIZZLE_CLIENT } from '../database/database.constants';
 import type { DrizzleDB } from '../database/database.module';
 import {
@@ -64,17 +65,24 @@ export class TransfersRepository {
     return deposit || null;
   }
 
-  async createDeposit(data: NewWalletDeposit): Promise<WalletDeposit> {
-    const [deposit] = await this.db.insert(walletDeposits).values(data).returning();
+  async createDeposit(data: NewWalletDeposit, tx?: DrizzleDB): Promise<WalletDeposit> {
+    const client = tx ?? this.db;
+    const [deposit] = await client.insert(walletDeposits).values(data).returning();
     return deposit;
   }
 
-  async updateDepositStatus(id: string, status: string, creditedAt?: Date): Promise<WalletDeposit> {
-    const [deposit] = await this.db
+  async updateDepositStatus(
+    id: string,
+    status: DepositStatus,
+    creditedAt?: Date,
+    tx?: DrizzleDB,
+  ): Promise<WalletDeposit> {
+    const client = tx ?? this.db;
+    const [deposit] = await client
       .update(walletDeposits)
       .set({
         status,
-        creditedAt: creditedAt || (status === 'CREDITED' ? new Date() : undefined),
+        creditedAt: creditedAt || (status === DepositStatus.CREDITED ? new Date() : undefined),
       })
       .where(eq(walletDeposits.id, id))
       .returning();
@@ -127,7 +135,7 @@ export class TransfersRepository {
     return await this.db
       .select()
       .from(withdrawalRequests)
-      .where(eq(withdrawalRequests.status, 'PENDING'))
+      .where(eq(withdrawalRequests.status, WithdrawalStatus.PENDING))
       .orderBy(withdrawalRequests.createdAt)
       .limit(limit);
   }
@@ -138,7 +146,7 @@ export class TransfersRepository {
       .from(withdrawalRequests)
       .where(
         and(
-          eq(withdrawalRequests.status, 'PROCESSING'),
+          eq(withdrawalRequests.status, WithdrawalStatus.PROCESSING),
           sql`${withdrawalRequests.txHash} IS NOT NULL`,
         ),
       );
@@ -152,7 +160,7 @@ export class TransfersRepository {
       const [locked] = await tx
         .select()
         .from(withdrawalRequests)
-        .where(eq(withdrawalRequests.status, 'PENDING'))
+        .where(eq(withdrawalRequests.status, WithdrawalStatus.PENDING))
         .orderBy(withdrawalRequests.createdAt)
         .limit(1)
         .for('update', { skipLocked: true });
@@ -163,7 +171,7 @@ export class TransfersRepository {
 
       const [updated] = await tx
         .update(withdrawalRequests)
-        .set({ status: 'PROCESSING' })
+        .set({ status: WithdrawalStatus.PROCESSING })
         .where(eq(withdrawalRequests.id, locked.id))
         .returning();
 
@@ -184,11 +192,12 @@ export class TransfersRepository {
     return request;
   }
 
-  async completeWithdrawal(id: string): Promise<WithdrawalRequest> {
-    const [request] = await this.db
+  async completeWithdrawal(id: string, tx?: DrizzleDB): Promise<WithdrawalRequest> {
+    const client = tx ?? this.db;
+    const [request] = await client
       .update(withdrawalRequests)
       .set({
-        status: 'COMPLETED',
+        status: WithdrawalStatus.COMPLETED,
         processedAt: new Date(),
       })
       .where(eq(withdrawalRequests.id, id))
@@ -197,11 +206,16 @@ export class TransfersRepository {
     return request;
   }
 
-  async failWithdrawal(id: string, errorMessage: string): Promise<WithdrawalRequest> {
-    const [request] = await this.db
+  async failWithdrawal(
+    id: string,
+    errorMessage: string,
+    tx?: DrizzleDB,
+  ): Promise<WithdrawalRequest> {
+    const client = tx ?? this.db;
+    const [request] = await client
       .update(withdrawalRequests)
       .set({
-        status: 'FAILED',
+        status: WithdrawalStatus.FAILED,
         errorMessage,
         processedAt: new Date(),
       })
@@ -213,7 +227,7 @@ export class TransfersRepository {
 
   async findUserWithdrawals(
     userId: string,
-    status?: string,
+    status?: WithdrawalStatus,
     limit = 20,
     offset = 0,
   ): Promise<{ items: WithdrawalRequest[]; total: number }> {

@@ -1,8 +1,15 @@
 import { Injectable, Inject, Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SHARED_ENV_DEFAULTS, SHARED_ENV_KEYS } from '@app/common/constants';
 import { KafkaProducerService } from '@app/common/kafka/kafka-producer.service';
-import { getKafkaTopicName, KAFKA_HEADERS } from '@app/common/kafka/kafka.constants';
+import {
+  getKafkaTopicName,
+  KAFKA_CLIENT_IDS,
+  KAFKA_DOMAINS,
+  KAFKA_HEADERS,
+} from '@app/common/kafka/kafka.constants';
 import { KafkaProducerRecord } from '@app/common/kafka/kafka.types';
+import { OutboxAggregateType } from '@app/contracts';
 import { DRIZZLE_CLIENT } from '../database/database.constants';
 import type { DrizzleDB } from '../database/database.module';
 import { OutboxRepository } from './outbox.repository';
@@ -27,7 +34,9 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
     @Inject(DRIZZLE_CLIENT)
     private readonly db: DrizzleDB,
   ) {
-    this.appEnv = (this.configService.get<string>('APP_ENV') || 'dev').toLowerCase();
+    this.appEnv = (
+      this.configService.get<string>(SHARED_ENV_KEYS.appEnv) || SHARED_ENV_DEFAULTS.appEnv
+    ).toLowerCase();
   }
 
   onModuleInit(): void {
@@ -91,7 +100,10 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
 
       for (const event of pendingEvents) {
         // Topic naming convention: <env>.<domain>.<event_name>
-        const domain = event.aggregateType === 'order' ? 'orders' : 'matching';
+        const domain =
+          event.aggregateType === OutboxAggregateType.ORDER
+            ? KAFKA_DOMAINS.orders
+            : KAFKA_DOMAINS.matching;
         const topic = getKafkaTopicName(this.appEnv, domain, event.eventType);
 
         records.push({
@@ -99,9 +111,9 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
           key: event.partitionKey,
           value: event.payload,
           headers: {
-            [KAFKA_HEADERS.originService]: 'orders-service',
-            'x-event-id': event.id,
-            'x-aggregate-id': event.aggregateId,
+            [KAFKA_HEADERS.originService]: KAFKA_CLIENT_IDS.orders,
+            [KAFKA_HEADERS.eventId]: event.id,
+            [KAFKA_HEADERS.aggregateId]: event.aggregateId,
           },
         });
 

@@ -1,5 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { and, eq, inArray, lt, sql } from 'drizzle-orm';
+import { OutboxStatus } from '@app/contracts';
 import { DRIZZLE_CLIENT } from '../database/database.constants';
 import type { DrizzleDB } from '../database/database.module';
 import { outboxEvents, OutboxEvent, NewOutboxEvent } from '../database/schema/outbox-events.schema';
@@ -39,7 +40,7 @@ export class OutboxRepository {
     return tx
       .select()
       .from(outboxEvents)
-      .where(eq(outboxEvents.status, 'PENDING'))
+      .where(eq(outboxEvents.status, OutboxStatus.PENDING))
       .orderBy(outboxEvents.createdAt)
       .limit(batchSize)
       .for('update', { skipLocked: true });
@@ -56,7 +57,7 @@ export class OutboxRepository {
     await client
       .update(outboxEvents)
       .set({
-        status: 'PUBLISHED',
+        status: OutboxStatus.PUBLISHED,
         updatedAt: new Date(),
       })
       .where(inArray(outboxEvents.id, ids));
@@ -70,7 +71,7 @@ export class OutboxRepository {
     await client
       .update(outboxEvents)
       .set({
-        status: 'FAILED',
+        status: OutboxStatus.FAILED,
         lastError: error,
         retryCount: sql`${outboxEvents.retryCount} + 1`,
         updatedAt: new Date(),
@@ -101,7 +102,12 @@ export class OutboxRepository {
     const subquery = this.db
       .select({ id: outboxEvents.id })
       .from(outboxEvents)
-      .where(and(eq(outboxEvents.status, 'PUBLISHED'), lt(outboxEvents.createdAt, cutoffDate)))
+      .where(
+        and(
+          eq(outboxEvents.status, OutboxStatus.PUBLISHED),
+          lt(outboxEvents.createdAt, cutoffDate),
+        ),
+      )
       .limit(limit);
 
     const deleted = await this.db

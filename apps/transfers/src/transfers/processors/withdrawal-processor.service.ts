@@ -1,15 +1,25 @@
 import { Metadata } from '@grpc/grpc-js';
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
+import { v7 as uuidv7 } from 'uuid';
 import { Currency } from '@app/common/constants';
-import type { AccountsServiceClient } from '@app/contracts';
+import type {
+  AccountsServiceClient,
+  WithdrawalCompletedEvent,
+  WithdrawalFailedEvent,
+} from '@app/contracts';
 import {
   GRPC_METADATA_KEYS,
   MOCK_USDT_ABI,
+  OutboxAggregateType,
+  OutboxStatus,
   PROTO_SERVICES,
   SERVICE_CALLER_IDS,
 } from '@app/contracts';
 import { scalePlatformAmountToEvm } from '../../common/utils';
+import { DRIZZLE_CLIENT } from '../../database/database.constants';
+import type { DrizzleDB } from '../../database/database.module';
+import { TransfersOutboxRepository } from '../../outbox/transfers-outbox.repository';
 import { RpcClientService } from '../blockchain/rpc-client.service';
 import { TRANSFERS_LOGS, TRANSFERS_TOKENS } from '../transfers.constants';
 import { TransfersRepository } from '../transfers.repository';
@@ -23,8 +33,11 @@ export class WithdrawalProcessorService implements OnModuleInit, OnModuleDestroy
   constructor(
     private readonly rpcClient: RpcClientService,
     private readonly repository: TransfersRepository,
+    private readonly outboxRepository: TransfersOutboxRepository,
     @Inject(PROTO_SERVICES.accounts)
     private readonly accountsClient: AccountsServiceClient,
+    @Inject(DRIZZLE_CLIENT)
+    private readonly db: DrizzleDB,
   ) {}
 
   async onModuleInit() {
@@ -186,6 +199,9 @@ export class WithdrawalProcessorService implements OnModuleInit, OnModuleDestroy
     currency: Currency,
     txHash: string,
   ): Promise<void> {
+    const now = Date.now();
+    const correlationId = uuidv7();
+
     try {
       const metadata = new Metadata();
       metadata.set(GRPC_METADATA_KEYS.serviceId, SERVICE_CALLER_IDS.transfersService);
@@ -205,7 +221,42 @@ export class WithdrawalProcessorService implements OnModuleInit, OnModuleDestroy
         ),
       );
 
-      await this.repository.completeWithdrawal(id);
+      // Atomically complete withdrawal and record WithdrawalCompletedEvent in outbox
+      await this.db.transaction(async (tx) => {
+        await this.repository.completeWithdrawal(id, tx);
+
+        const eventPayload: WithdrawalCompletedEvent = {
+          withdrawalId: id,
+          userId,
+          currency,
+          amount,
+          txHash,
+          timestamp: now,
+        };
+
+        await this.outboxRepository.insert(
+          {
+            id: uuidv7(),
+            aggregateType: OutboxAggregateType.WITHDRAWAL,
+            aggregateId: id,
+            partitionKey: userId,
+            eventType: 'withdrawal_completed',
+            payload: {
+              eventId: uuidv7(),
+              eventType: 'transfers.withdrawal_completed',
+              aggregateId: id,
+              partitionKey: userId,
+              timestamp: now,
+              correlationId,
+              payload: eventPayload,
+            },
+            status: OutboxStatus.PENDING,
+            retryCount: 0,
+          },
+          tx,
+        );
+      });
+
       this.logger.log(TRANSFERS_LOGS.withdrawal.completed(id, txHash));
     } catch (err) {
       this.logger.error(`Failed to finalize debit for completed withdrawal ${id}:`, err);
@@ -220,6 +271,9 @@ export class WithdrawalProcessorService implements OnModuleInit, OnModuleDestroy
     idempotencyKey: string,
     reason: string,
   ): Promise<void> {
+    const now = Date.now();
+    const correlationId = uuidv7();
+
     try {
       const metadata = new Metadata();
       metadata.set(GRPC_METADATA_KEYS.serviceId, SERVICE_CALLER_IDS.transfersService);
@@ -242,7 +296,47 @@ export class WithdrawalProcessorService implements OnModuleInit, OnModuleDestroy
       this.logger.error(`Compensating unlock failed for withdrawal ${id}:`, err);
     }
 
-    await this.repository.failWithdrawal(id, reason.slice(0, 255));
-    this.logger.warn(TRANSFERS_LOGS.withdrawal.failed(id, reason));
+    try {
+      // Atomically fail withdrawal and record WithdrawalFailedEvent in outbox
+      await this.db.transaction(async (tx) => {
+        await this.repository.failWithdrawal(id, reason.slice(0, 255), tx);
+
+        const eventPayload: WithdrawalFailedEvent = {
+          withdrawalId: id,
+          userId,
+          currency,
+          amount,
+          txHash: '',
+          reason: reason.slice(0, 255),
+          timestamp: now,
+        };
+
+        await this.outboxRepository.insert(
+          {
+            id: uuidv7(),
+            aggregateType: OutboxAggregateType.WITHDRAWAL,
+            aggregateId: id,
+            partitionKey: userId,
+            eventType: 'withdrawal_failed',
+            payload: {
+              eventId: uuidv7(),
+              eventType: 'transfers.withdrawal_failed',
+              aggregateId: id,
+              partitionKey: userId,
+              timestamp: now,
+              correlationId,
+              payload: eventPayload,
+            },
+            status: OutboxStatus.PENDING,
+            retryCount: 0,
+          },
+          tx,
+        );
+      });
+
+      this.logger.warn(TRANSFERS_LOGS.withdrawal.failed(id, reason));
+    } catch (dbErr) {
+      this.logger.error(`Failed to record withdrawal failure for ${id}:`, dbErr);
+    }
   }
 }

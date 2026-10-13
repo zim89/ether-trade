@@ -9,6 +9,7 @@ import {
   index,
 } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
+import { WithdrawalStatus } from '@app/contracts';
 
 export const withdrawalRequests = pgTable(
   'withdrawal_requests',
@@ -25,7 +26,10 @@ export const withdrawalRequests = pgTable(
     amount: numeric('amount', { precision: 28, scale: 8 }).notNull(),
     txHash: varchar('tx_hash', { length: 66 }),
     nonce: integer('nonce'),
-    status: varchar('status', { length: 20 }).notNull().default('PENDING'),
+    status: varchar('status', { length: 20 })
+      .$type<WithdrawalStatus>()
+      .notNull()
+      .default(WithdrawalStatus.PENDING),
     errorMessage: varchar('error_message', { length: 255 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
     processedAt: timestamp('processed_at', { withTimezone: true, mode: 'date' }),

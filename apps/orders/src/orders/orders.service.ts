@@ -25,6 +25,8 @@ import {
   OrderSide,
   OrderStatus,
   OrderType,
+  OutboxAggregateType,
+  OutboxStatus,
   PROTO_SERVICES,
   SERVICE_CALLER_IDS,
 } from '@app/contracts';
@@ -208,7 +210,7 @@ export class OrdersService implements OnModuleInit {
 
         outboxList.push({
           id: uuidv7(),
-          aggregateType: 'order',
+          aggregateType: OutboxAggregateType.ORDER,
           aggregateId: initialOrder.id,
           partitionKey: initialOrder.pair,
           eventType: 'order_placed',
@@ -221,7 +223,7 @@ export class OrdersService implements OnModuleInit {
             correlationId,
             payload: orderPlacedPayload,
           },
-          status: 'PENDING',
+          status: OutboxStatus.PENDING,
           retryCount: 0,
         });
 
@@ -247,7 +249,7 @@ export class OrdersService implements OnModuleInit {
 
           outboxList.push({
             id: uuidv7(),
-            aggregateType: 'trade',
+            aggregateType: OutboxAggregateType.TRADE,
             aggregateId: trade.tradeId,
             partitionKey: trade.symbol,
             eventType: 'trade_executed',
@@ -260,13 +262,13 @@ export class OrdersService implements OnModuleInit {
               correlationId,
               payload: tradeExecutedPayload,
             },
-            status: 'PENDING',
+            status: OutboxStatus.PENDING,
             retryCount: 0,
           });
         }
 
         // Check if taker is FILLED
-        if ((matchResult.takerOrder.status as OrderStatus) === OrderStatus.FILLED) {
+        if (matchResult.takerOrder.status === OrderStatus.FILLED) {
           const takerFilledPayload: OrderFilledEvent = {
             orderId: matchResult.takerOrder.id,
             userId: matchResult.takerOrder.userId,
@@ -280,7 +282,7 @@ export class OrdersService implements OnModuleInit {
 
           outboxList.push({
             id: uuidv7(),
-            aggregateType: 'order',
+            aggregateType: OutboxAggregateType.ORDER,
             aggregateId: matchResult.takerOrder.id,
             partitionKey: matchResult.takerOrder.pair,
             eventType: 'order_filled',
@@ -293,14 +295,14 @@ export class OrdersService implements OnModuleInit {
               correlationId,
               payload: takerFilledPayload,
             },
-            status: 'PENDING',
+            status: OutboxStatus.PENDING,
             retryCount: 0,
           });
         }
 
         // Check each updated maker if it reached FILLED status
         for (const makerOrder of matchResult.makerOrdersUpdated) {
-          if ((makerOrder.status as OrderStatus) === OrderStatus.FILLED) {
+          if (makerOrder.status === OrderStatus.FILLED) {
             const makerFilledPayload: OrderFilledEvent = {
               orderId: makerOrder.id,
               userId: makerOrder.userId,
@@ -314,7 +316,7 @@ export class OrdersService implements OnModuleInit {
 
             outboxList.push({
               id: uuidv7(),
-              aggregateType: 'order',
+              aggregateType: OutboxAggregateType.ORDER,
               aggregateId: makerOrder.id,
               partitionKey: makerOrder.pair,
               eventType: 'order_filled',
@@ -327,7 +329,7 @@ export class OrdersService implements OnModuleInit {
                 correlationId,
                 payload: makerFilledPayload,
               },
-              status: 'PENDING',
+              status: OutboxStatus.PENDING,
               retryCount: 0,
             });
           }
@@ -386,14 +388,14 @@ export class OrdersService implements OnModuleInit {
       });
     }
 
-    if ((existingOrder.status as OrderStatus) === OrderStatus.CANCELLED) {
+    if (existingOrder.status === OrderStatus.CANCELLED) {
       throw new RpcException({
         code: HttpStatus.BAD_REQUEST,
         message: ORDERS_ERRORS.orderAlreadyCancelled(orderId),
       });
     }
 
-    if ((existingOrder.status as OrderStatus) === OrderStatus.FILLED) {
+    if (existingOrder.status === OrderStatus.FILLED) {
       throw new RpcException({
         code: HttpStatus.BAD_REQUEST,
         message: ORDERS_ERRORS.orderAlreadyFilled(orderId),
@@ -424,7 +426,7 @@ export class OrdersService implements OnModuleInit {
       await this.outboxRepository.insert(
         {
           id: uuidv7(),
-          aggregateType: 'order',
+          aggregateType: OutboxAggregateType.ORDER,
           aggregateId: updated.id,
           partitionKey: updated.pair,
           eventType: 'order_cancelled',
@@ -437,7 +439,7 @@ export class OrdersService implements OnModuleInit {
             correlationId,
             payload: cancelPayload,
           },
-          status: 'PENDING',
+          status: OutboxStatus.PENDING,
           retryCount: 0,
         },
         tx,
@@ -519,7 +521,7 @@ export class OrdersService implements OnModuleInit {
     const result = await this.ordersRepository.findMany({
       userId,
       pair: pair || undefined,
-      status: status || undefined,
+      status: (status as OrderStatus) || undefined,
       limit: limit || 20,
       offset: offset || 0,
     });

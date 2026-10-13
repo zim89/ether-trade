@@ -1,9 +1,14 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { eq, inArray, sql } from 'drizzle-orm';
+import { SHARED_ENV_DEFAULTS, SHARED_ENV_KEYS } from '@app/common/constants';
 import { BaseKafkaConsumer } from '@app/common/kafka/kafka-consumer.abstract';
 import { KafkaProducerService } from '@app/common/kafka/kafka-producer.service';
-import { getKafkaTopicName, KAFKA_CONSUMER_GROUPS } from '@app/common/kafka/kafka.constants';
+import {
+  getKafkaTopicName,
+  KAFKA_CONSUMER_GROUPS,
+  KAFKA_DOMAINS,
+} from '@app/common/kafka/kafka.constants';
 import { KafkaBatchConsumerPayload } from '@app/common/kafka/kafka.types';
 import type { DomainEventEnvelope, TradeExecutedEvent } from '@app/contracts';
 import { BalancesRepository } from '../balances/balances.repository';
@@ -29,8 +34,10 @@ export class TradesSettlementConsumer extends BaseKafkaConsumer {
     @Inject(DRIZZLE_CLIENT)
     private readonly db: DrizzleDB,
   ) {
-    const appEnv = (configService.get<string>('APP_ENV') || 'dev').toLowerCase();
-    const tradeTopic = getKafkaTopicName(appEnv, 'matching', 'trade_executed');
+    const appEnv = (
+      configService.get<string>(SHARED_ENV_KEYS.appEnv) || SHARED_ENV_DEFAULTS.appEnv
+    ).toLowerCase();
+    const tradeTopic = getKafkaTopicName(appEnv, KAFKA_DOMAINS.matching, 'trade_executed');
 
     super(configService, producerService, {
       groupId: KAFKA_CONSUMER_GROUPS.accountsSettlement,

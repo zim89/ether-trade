@@ -1,5 +1,6 @@
 import { pgTable, uuid, varchar, numeric, timestamp, index } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
+import { OrderStatus } from '@app/contracts';
 
 export const orders = pgTable(
   'orders',
@@ -15,7 +16,10 @@ export const orders = pgTable(
     amount: numeric('amount', { precision: 28, scale: 8 }).notNull(),
     filledAmount: numeric('filled_amount', { precision: 28, scale: 8 }).notNull().default('0'),
     remainingAmount: numeric('remaining_amount', { precision: 28, scale: 8 }).notNull(),
-    status: varchar('status', { length: 20 }).notNull().default('OPEN'),
+    status: varchar('status', { length: 20 })
+      .$type<OrderStatus>()
+      .notNull()
+      .default(OrderStatus.OPEN),
     idempotencyKey: varchar('idempotency_key', { length: 128 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),

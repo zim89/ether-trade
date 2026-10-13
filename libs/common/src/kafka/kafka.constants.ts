@@ -4,6 +4,8 @@
 export const KAFKA_HEADERS = {
   correlationId: 'x-correlation-id',
   originService: 'x-origin-service',
+  eventId: 'x-event-id',
+  aggregateId: 'x-aggregate-id',
   dlqOriginalTopic: 'x-dlq-original-topic',
   dlqOriginalOffset: 'x-dlq-original-offset',
   dlqError: 'x-dlq-error',
@@ -17,6 +19,16 @@ export const KAFKA_CLIENT_IDS = {
   orders: 'orders-service',
   accounts: 'accounts-service',
   transfers: 'transfers-service',
+} as const;
+
+/**
+ * Standard domain partitions for Kafka topics conforming to:
+ * <environment>.<domain>.<event_name>
+ */
+export const KAFKA_DOMAINS = {
+  orders: 'orders',
+  matching: 'matching',
+  transfers: 'transfers',
 } as const;
 
 /**

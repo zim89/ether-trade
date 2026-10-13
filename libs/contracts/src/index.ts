@@ -61,5 +61,6 @@ export {
 } from './generated/transfers.pb';
 
 export * from './orders.types';
+export * from './transfers.types';
 export * from './transfers';
 export * from './events';

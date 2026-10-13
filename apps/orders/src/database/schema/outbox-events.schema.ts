@@ -11,8 +11,13 @@ import {
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
+import { OutboxAggregateType, OutboxStatus } from '@app/contracts';
 
-export const outboxStatusEnum = pgEnum('outbox_status', ['PENDING', 'PUBLISHED', 'FAILED']);
+export const outboxStatusEnum = pgEnum('outbox_status', [
+  OutboxStatus.PENDING,
+  OutboxStatus.PUBLISHED,
+  OutboxStatus.FAILED,
+]);
 
 export const outboxEvents = pgTable(
   'outbox_events',
@@ -20,12 +25,15 @@ export const outboxEvents = pgTable(
     id: uuid('id')
       .primaryKey()
       .$defaultFn(() => uuidv7()),
-    aggregateType: varchar('aggregate_type', { length: 32 }).notNull(),
+    aggregateType: varchar('aggregate_type', { length: 32 }).$type<OutboxAggregateType>().notNull(),
     aggregateId: varchar('aggregate_id', { length: 64 }).notNull(),
     partitionKey: varchar('partition_key', { length: 64 }).notNull(),
     eventType: varchar('event_type', { length: 64 }).notNull(),
     payload: jsonb('payload').notNull(),
-    status: outboxStatusEnum('status').default('PENDING').notNull(),
+    status: outboxStatusEnum('status')
+      .$type<OutboxStatus>()
+      .default(OutboxStatus.PENDING)
+      .notNull(),
     retryCount: integer('retry_count').default(0).notNull(),
     lastError: text('last_error'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
@@ -34,13 +42,12 @@ export const outboxEvents = pgTable(
   (table) => [
     index('idx_outbox_pending')
       .on(table.createdAt)
-      .where(sql`${table.status} = 'PENDING'`),
+      .where(sql`${table.status} = ${OutboxStatus.PENDING}`),
     index('idx_outbox_retention')
       .on(table.createdAt)
-      .where(sql`${table.status} = 'PUBLISHED'`),
+      .where(sql`${table.status} = ${OutboxStatus.PUBLISHED}`),
   ],
 );
 
 export type OutboxEvent = typeof outboxEvents.$inferSelect;
 export type NewOutboxEvent = typeof outboxEvents.$inferInsert;
-export type OutboxStatus = (typeof outboxStatusEnum.enumValues)[number];

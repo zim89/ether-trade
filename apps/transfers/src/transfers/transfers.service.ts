@@ -17,7 +17,12 @@ import type {
   RequestWithdrawalResponse,
   WithdrawalItem,
 } from '@app/contracts';
-import { GRPC_METADATA_KEYS, PROTO_SERVICES, SERVICE_CALLER_IDS } from '@app/contracts';
+import {
+  GRPC_METADATA_KEYS,
+  PROTO_SERVICES,
+  SERVICE_CALLER_IDS,
+  WithdrawalStatus,
+} from '@app/contracts';
 import { uuidToBytes16 } from '../common/utils';
 import type { WithdrawalRequest } from '../database/schema';
 import { RpcClientService } from './blockchain/rpc-client.service';
@@ -103,7 +108,7 @@ export class TransfersService {
         destinationAddress,
         currency,
         amount,
-        status: 'PENDING',
+        status: WithdrawalStatus.PENDING,
       });
 
       this.logger.log(TRANSFERS_LOGS.withdrawal.requested(created.id, userId, amount, currency));
@@ -153,7 +158,7 @@ export class TransfersService {
 
     const { items, total } = await this.repository.findUserWithdrawals(
       userId,
-      data.status,
+      data.status as WithdrawalStatus | undefined,
       limit,
       offset,
     );

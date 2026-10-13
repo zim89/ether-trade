@@ -1,14 +1,25 @@
 import { Metadata } from '@grpc/grpc-js';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
+import { v7 as uuidv7 } from 'uuid';
 import { Currency } from '@app/common/constants';
-import type { AccountsServiceClient } from '@app/contracts';
-import { GRPC_METADATA_KEYS, PROTO_SERVICES, SERVICE_CALLER_IDS } from '@app/contracts';
+import type { AccountsServiceClient, DepositConfirmedEvent } from '@app/contracts';
+import {
+  DepositStatus,
+  GRPC_METADATA_KEYS,
+  OutboxAggregateType,
+  OutboxStatus,
+  PROTO_SERVICES,
+  SERVICE_CALLER_IDS,
+} from '@app/contracts';
 import {
   bytes16ToUuid,
   isAboveMinDepositThreshold,
   scaleEvmAmountToPlatform,
 } from '../../common/utils';
+import { DRIZZLE_CLIENT } from '../../database/database.constants';
+import type { DrizzleDB } from '../../database/database.module';
+import { TransfersOutboxRepository } from '../../outbox/transfers-outbox.repository';
 import { RpcClientService } from '../blockchain/rpc-client.service';
 import { TRANSFERS_LOGS, TRANSFERS_TOKENS, TokenConfig } from '../transfers.constants';
 import { TransfersRepository } from '../transfers.repository';
@@ -20,8 +31,11 @@ export class DepositProcessorService {
   constructor(
     private readonly rpcClient: RpcClientService,
     private readonly repository: TransfersRepository,
+    private readonly outboxRepository: TransfersOutboxRepository,
     @Inject(PROTO_SERVICES.accounts)
     private readonly accountsClient: AccountsServiceClient,
+    @Inject(DRIZZLE_CLIENT)
+    private readonly db: DrizzleDB,
   ) {}
 
   /**
@@ -64,7 +78,7 @@ export class DepositProcessorService {
     // Check if deposit already recorded (idempotency check)
     const existing = await this.repository.findDepositByTxHash(txHash);
     if (existing) {
-      if (existing.status === 'CONFIRMED') {
+      if (existing.status === DepositStatus.CONFIRMED) {
         // Retry crediting accounts if not yet credited
         await this.creditUserAccount(
           existing.id,
@@ -105,7 +119,7 @@ export class DepositProcessorService {
         tokenAddress: tokenAddress ?? undefined,
         currency: 'UNKNOWN',
         amount: '0',
-        status: 'REJECTED_UNSUPPORTED_TOKEN',
+        status: DepositStatus.REJECTED_UNSUPPORTED_TOKEN,
       });
       return;
     }
@@ -126,20 +140,62 @@ export class DepositProcessorService {
         tokenAddress: tokenAddress ?? undefined,
         currency: tokenConfig.currency,
         amount: platformAmount,
-        status: 'REJECTED_UNSUPPORTED_TOKEN',
+        status: DepositStatus.REJECTED_BELOW_MINIMUM,
       });
       return;
     }
 
-    // Save as CONFIRMED
-    const deposit = await this.repository.createDeposit({
-      userId,
-      txHash,
-      blockNumber,
-      tokenAddress: tokenAddress ?? undefined,
-      currency: tokenConfig.currency,
-      amount: platformAmount,
-      status: 'CONFIRMED',
+    // Save as CONFIRMED + publish DepositConfirmedEvent in single transaction
+    const now = Date.now();
+    const correlationId = uuidv7();
+
+    const deposit = await this.db.transaction(async (tx) => {
+      const created = await this.repository.createDeposit(
+        {
+          userId,
+          txHash,
+          blockNumber,
+          tokenAddress: tokenAddress ?? undefined,
+          currency: tokenConfig.currency,
+          amount: platformAmount,
+          status: DepositStatus.CONFIRMED,
+        },
+        tx,
+      );
+
+      const eventPayload: DepositConfirmedEvent = {
+        depositId: created.id,
+        userId: created.userId,
+        currency: created.currency,
+        amount: created.amount,
+        txHash: created.txHash,
+        blockNumber: created.blockNumber,
+        timestamp: now,
+      };
+
+      await this.outboxRepository.insert(
+        {
+          id: uuidv7(),
+          aggregateType: OutboxAggregateType.DEPOSIT,
+          aggregateId: created.id,
+          partitionKey: created.userId,
+          eventType: 'deposit_confirmed',
+          payload: {
+            eventId: uuidv7(),
+            eventType: 'transfers.deposit_confirmed',
+            aggregateId: created.id,
+            partitionKey: created.userId,
+            timestamp: now,
+            correlationId,
+            payload: eventPayload,
+          },
+          status: OutboxStatus.PENDING,
+          retryCount: 0,
+        },
+        tx,
+      );
+
+      return created;
     });
 
     // Credit in accounts-service
@@ -171,7 +227,7 @@ export class DepositProcessorService {
         ),
       );
 
-      await this.repository.updateDepositStatus(depositId, 'CREDITED');
+      await this.repository.updateDepositStatus(depositId, DepositStatus.CREDITED);
       this.logger.log(TRANSFERS_LOGS.deposit.processed(txHash, userId, amount, currency));
     } catch (err) {
       this.logger.error(

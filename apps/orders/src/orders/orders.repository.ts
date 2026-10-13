@@ -8,7 +8,7 @@ import { orders, Order, NewOrder } from '../database/schema/orders.schema';
 export interface FindOrdersFilter {
   userId: string;
   pair?: string;
-  status?: string;
+  status?: OrderStatus;
   limit?: number;
   offset?: number;
 }
@@ -114,7 +114,7 @@ export class OrdersRepository {
     params: {
       filledAmount: string;
       remainingAmount: string;
-      status: string;
+      status: OrderStatus;
     },
     tx?: DrizzleDB,
   ): Promise<Order | null> {
