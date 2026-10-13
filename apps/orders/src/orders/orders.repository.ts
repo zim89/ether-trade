@@ -23,16 +23,18 @@ export class OrdersRepository {
   /**
    * Inserts a new order into the database.
    */
-  async create(newOrder: NewOrder): Promise<Order> {
-    const [created] = await this.db.insert(orders).values(newOrder).returning();
+  async create(newOrder: NewOrder, tx?: DrizzleDB): Promise<Order> {
+    const client = tx ?? this.db;
+    const [created] = await client.insert(orders).values(newOrder).returning();
     return created;
   }
 
   /**
    * Finds an order by its ID.
    */
-  async findById(orderId: string): Promise<Order | null> {
-    const [result] = await this.db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  async findById(orderId: string, tx?: DrizzleDB): Promise<Order | null> {
+    const client = tx ?? this.db;
+    const [result] = await client.select().from(orders).where(eq(orders.id, orderId)).limit(1);
 
     return result ?? null;
   }
@@ -134,10 +136,11 @@ export class OrdersRepository {
   /**
    * Cancels an open or partially filled order.
    */
-  async cancel(orderId: string, userId: string): Promise<Order | null> {
+  async cancel(orderId: string, userId: string, tx?: DrizzleDB): Promise<Order | null> {
     const cancellableStatuses = [OrderStatus.OPEN, OrderStatus.PARTIALLY_FILLED];
+    const client = tx ?? this.db;
 
-    const [updated] = await this.db
+    const [updated] = await client
       .update(orders)
       .set({
         status: OrderStatus.CANCELLED,

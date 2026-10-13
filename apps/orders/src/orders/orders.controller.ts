@@ -40,7 +40,10 @@ export class OrdersController {
   @GrpcMethod(ORDERS_SERVICE_NAME, 'GetOrders')
   async getOrders(data: GetOrdersRequest): Promise<GetOrdersResponse> {
     const result = await this.ordersService.getOrders(data);
-    return result;
+    return {
+      orders: result.items,
+      total: result.total,
+    };
   }
 
   @GrpcMethod(ORDERS_SERVICE_NAME, 'GetOrderBook')

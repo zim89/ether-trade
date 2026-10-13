@@ -92,11 +92,17 @@ describe('MatchingEngineService', () => {
     const result = await service.match(takerOrder);
 
     expect(result.trades.length).toBe(1);
-    expect(result.trades[0]).toEqual({
+    expect(result.trades[0]).toMatchObject({
       makerOrderId: 'maker-sell-1',
       takerOrderId: 'taker-buy-1',
       price: '2990.00000000',
-      amount: '1.00000000',
+      quantity: '1.00000000',
+      symbol: 'ETH_USDT',
+      buyerUserId: 'user-taker',
+      sellerUserId: 'user-maker',
+      buyerLimitPrice: '3000.00000000',
+      buyerFee: '0',
+      sellerFee: '0',
     });
 
     expect(removeOrderMock).toHaveBeenCalledWith('maker-sell-1', 'ETH_USDT', OrderSide.SELL);
@@ -145,7 +151,7 @@ describe('MatchingEngineService', () => {
     const result = await service.match(takerOrder);
 
     expect(result.trades.length).toBe(1);
-    expect(result.trades[0].amount).toBe('1.00000000');
+    expect(result.trades[0].quantity).toBe('1.00000000');
 
     expect(result.takerOrder.status).toBe(OrderStatus.PARTIALLY_FILLED);
     expect(result.takerOrder.filledAmount).toBe('1.00000000');
@@ -197,13 +203,55 @@ describe('MatchingEngineService', () => {
     const result = await service.match(takerOrder);
 
     expect(result.trades.length).toBe(1);
-    expect(result.trades[0].amount).toBe('0.50000000');
+    expect(result.trades[0].quantity).toBe('0.50000000');
 
     expect(updateRemainingAmountMock).toHaveBeenCalledWith('maker-buy-3', '1.50000000');
     expect(removeOrderMock).not.toHaveBeenCalled();
 
     expect(result.takerOrder.status).toBe(OrderStatus.FILLED);
     expect(result.takerOrder.remainingAmount).toBe('0.00000000');
+  });
+
+  it('should skip maker order and not match when Self-Trade Prevention (STP) triggers (same userId)', async () => {
+    const takerOrder: Order = {
+      id: 'taker-buy-stp',
+      userId: 'same-user',
+      pair: 'ETH_USDT',
+      side: OrderSide.BUY,
+      type: OrderType.LIMIT,
+      price: '3000.00000000',
+      amount: '1.00000000',
+      filledAmount: '0.00000000',
+      remainingAmount: '1.00000000',
+      status: OrderStatus.OPEN,
+      idempotencyKey: 'idemp-stp',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const makerAskSameUser: OrderbookEntry = {
+      orderId: 'maker-sell-stp',
+      userId: 'same-user', // Same user!
+      pair: 'ETH_USDT',
+      side: OrderSide.SELL,
+      type: OrderType.LIMIT,
+      price: '2990.00000000',
+      amount: '1.00000000',
+      remainingAmount: '1.00000000',
+      createdAt: 1700000000,
+    };
+
+    getBestOpposingOrdersMock.mockResolvedValue([makerAskSameUser]);
+
+    const result = await service.match(takerOrder);
+
+    expect(result.trades.length).toBe(0);
+    expect(result.takerOrder.status).toBe(OrderStatus.OPEN);
+    expect(addOrderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: 'taker-buy-stp',
+      }),
+    );
   });
 
   it('should not match when price does not cross and add taker directly to orderbook', async () => {

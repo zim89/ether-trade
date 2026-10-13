@@ -6,7 +6,13 @@ import BigNumber from 'bignumber.js';
 import { firstValueFrom } from 'rxjs';
 import { v7 as uuidv7 } from 'uuid';
 import { Currency } from '@app/common/constants';
-import type { AccountsServiceClient } from '@app/contracts';
+import type {
+  AccountsServiceClient,
+  OrderCancelledEvent,
+  OrderFilledEvent,
+  OrderPlacedEvent,
+  TradeExecutedEvent,
+} from '@app/contracts';
 import {
   CancelOrderRequest,
   CreateOrderRequest,
@@ -22,7 +28,11 @@ import {
   PROTO_SERVICES,
   SERVICE_CALLER_IDS,
 } from '@app/contracts';
+import { DRIZZLE_CLIENT } from '../database/database.constants';
+import type { DrizzleDB } from '../database/database.module';
 import type { Order } from '../database/schema/orders.schema';
+import type { NewOutboxEvent } from '../database/schema/outbox-events.schema';
+import { OutboxRepository } from '../outbox/outbox.repository';
 import { IdempotencyRepository, IDEMPOTENCY_STATUS } from './idempotency.repository';
 import { MatchingEngineService } from './matching-engine.service';
 import { OrderbookService } from './orderbook.service';
@@ -39,8 +49,11 @@ export class OrdersService implements OnModuleInit {
     private readonly idempotencyRepository: IdempotencyRepository,
     private readonly orderbookService: OrderbookService,
     private readonly matchingEngineService: MatchingEngineService,
+    private readonly outboxRepository: OutboxRepository,
     @Inject(PROTO_SERVICES.accounts)
     private readonly accountsClient: AccountsServiceClient,
+    @Inject(DRIZZLE_CLIENT)
+    private readonly db: DrizzleDB,
   ) {}
 
   /**
@@ -69,7 +82,9 @@ export class OrdersService implements OnModuleInit {
   }
 
   /**
-   * Creates an order with two-phase balance locking outside DB transaction and Saga-Lite rollback.
+   * Creates an order with two-phase balance locking outside DB transaction,
+   * single ACID Unit of Work for order persistence, matching and Outbox events,
+   * and Saga-Lite rollback on database failures.
    */
   async createOrder(request: CreateOrderRequest): Promise<OrderItem> {
     const { userId, pair, side, type, price, amount, idempotencyKey } = request;
@@ -155,24 +170,177 @@ export class OrdersService implements OnModuleInit {
       });
     }
 
-    // 4. Local DB transaction: insert order into PostgreSQL
-    let createdOrder: Order;
+    // 4. Unit of Work: ACID Transaction combining order insertion, matching engine updates, and Outbox events
+    let finalOrder: Order;
     try {
-      createdOrder = await this.ordersRepository.create({
-        userId,
-        pair,
-        side,
-        type,
-        price,
-        amount,
-        filledAmount: '0',
-        remainingAmount: amount,
-        status: OrderStatus.OPEN,
-        idempotencyKey,
+      finalOrder = await this.db.transaction(async (tx) => {
+        // 4.1 Insert taker order into PostgreSQL
+        const initialOrder = await this.ordersRepository.create(
+          {
+            userId,
+            pair,
+            side,
+            type,
+            price,
+            amount,
+            filledAmount: '0',
+            remainingAmount: amount,
+            status: OrderStatus.OPEN,
+            idempotencyKey,
+          },
+          tx,
+        );
+
+        const outboxList: NewOutboxEvent[] = [];
+        const now = Date.now();
+
+        // 4.2 Write OrderPlacedEvent to outbox_events
+        const orderPlacedPayload: OrderPlacedEvent = {
+          orderId: initialOrder.id,
+          userId: initialOrder.userId,
+          symbol: initialOrder.pair,
+          side: initialOrder.side.toLowerCase() as 'buy' | 'sell',
+          type: initialOrder.type.toLowerCase() as 'limit' | 'market',
+          price: initialOrder.price,
+          quantity: initialOrder.amount,
+          timestamp: now,
+        };
+
+        outboxList.push({
+          id: uuidv7(),
+          aggregateType: 'order',
+          aggregateId: initialOrder.id,
+          partitionKey: initialOrder.pair,
+          eventType: 'order_placed',
+          payload: {
+            eventId: uuidv7(),
+            eventType: 'order.placed',
+            aggregateId: initialOrder.id,
+            partitionKey: initialOrder.pair,
+            timestamp: now,
+            correlationId,
+            payload: orderPlacedPayload,
+          },
+          status: 'PENDING',
+          retryCount: 0,
+        });
+
+        // 4.3 Match against Orderbook within same transaction
+        const matchResult = await this.matchingEngineService.match(initialOrder, tx);
+
+        // 4.4 Record TradeExecutedEvent for each trade and OrderFilledEvent for filled orders
+        for (const trade of matchResult.trades) {
+          const tradeExecutedPayload: TradeExecutedEvent = {
+            tradeId: trade.tradeId,
+            buyOrderId: trade.buyOrderId,
+            sellOrderId: trade.sellOrderId,
+            buyerUserId: trade.buyerUserId,
+            sellerUserId: trade.sellerUserId,
+            symbol: trade.symbol,
+            price: trade.price,
+            quantity: trade.quantity,
+            buyerLimitPrice: trade.buyerLimitPrice,
+            buyerFee: trade.buyerFee,
+            sellerFee: trade.sellerFee,
+            timestamp: now,
+          };
+
+          outboxList.push({
+            id: uuidv7(),
+            aggregateType: 'trade',
+            aggregateId: trade.tradeId,
+            partitionKey: trade.symbol,
+            eventType: 'trade_executed',
+            payload: {
+              eventId: uuidv7(),
+              eventType: 'matching.trade_executed',
+              aggregateId: trade.tradeId,
+              partitionKey: trade.symbol,
+              timestamp: now,
+              correlationId,
+              payload: tradeExecutedPayload,
+            },
+            status: 'PENDING',
+            retryCount: 0,
+          });
+        }
+
+        // Check if taker is FILLED
+        if ((matchResult.takerOrder.status as OrderStatus) === OrderStatus.FILLED) {
+          const takerFilledPayload: OrderFilledEvent = {
+            orderId: matchResult.takerOrder.id,
+            userId: matchResult.takerOrder.userId,
+            symbol: matchResult.takerOrder.pair,
+            filledPrice: matchResult.takerOrder.price,
+            filledQuantity: matchResult.takerOrder.filledAmount,
+            remainingQuantity: matchResult.takerOrder.remainingAmount,
+            fee: '0',
+            timestamp: now,
+          };
+
+          outboxList.push({
+            id: uuidv7(),
+            aggregateType: 'order',
+            aggregateId: matchResult.takerOrder.id,
+            partitionKey: matchResult.takerOrder.pair,
+            eventType: 'order_filled',
+            payload: {
+              eventId: uuidv7(),
+              eventType: 'order.filled',
+              aggregateId: matchResult.takerOrder.id,
+              partitionKey: matchResult.takerOrder.pair,
+              timestamp: now,
+              correlationId,
+              payload: takerFilledPayload,
+            },
+            status: 'PENDING',
+            retryCount: 0,
+          });
+        }
+
+        // Check each updated maker if it reached FILLED status
+        for (const makerOrder of matchResult.makerOrdersUpdated) {
+          if ((makerOrder.status as OrderStatus) === OrderStatus.FILLED) {
+            const makerFilledPayload: OrderFilledEvent = {
+              orderId: makerOrder.id,
+              userId: makerOrder.userId,
+              symbol: makerOrder.pair,
+              filledPrice: makerOrder.price,
+              filledQuantity: makerOrder.filledAmount,
+              remainingQuantity: makerOrder.remainingAmount,
+              fee: '0',
+              timestamp: now,
+            };
+
+            outboxList.push({
+              id: uuidv7(),
+              aggregateType: 'order',
+              aggregateId: makerOrder.id,
+              partitionKey: makerOrder.pair,
+              eventType: 'order_filled',
+              payload: {
+                eventId: uuidv7(),
+                eventType: 'order.filled',
+                aggregateId: makerOrder.id,
+                partitionKey: makerOrder.pair,
+                timestamp: now,
+                correlationId,
+                payload: makerFilledPayload,
+              },
+              status: 'PENDING',
+              retryCount: 0,
+            });
+          }
+        }
+
+        // 4.5 Insert all outbox records in the single Unit of Work
+        await this.outboxRepository.insertMany(outboxList, tx);
+
+        return matchResult.takerOrder;
       });
     } catch (dbError: unknown) {
       // SAGA Compensation: unlock reserved funds in accounts-service
-      this.logger.warn(`Order DB persistence failed. Initiating Saga compensation unlock.`);
+      this.logger.warn(`Order DB transaction failed. Initiating Saga compensation unlock.`);
       try {
         await firstValueFrom(
           this.accountsClient.unlockBalance(
@@ -194,18 +362,9 @@ export class OrdersService implements OnModuleInit {
       throw dbError;
     }
 
-    // 5. Match order against Orderbook via Matching Engine
-    let finalOrder = createdOrder;
-    try {
-      const matchResult = await this.matchingEngineService.match(createdOrder);
-      finalOrder = matchResult.takerOrder;
-    } catch (matchErr: unknown) {
-      this.logger.error(`Matching engine error: ${(matchErr as Error).message}`);
-    }
-
     const orderItem = this.mapOrderToItem(finalOrder);
 
-    // 6. Complete idempotency record
+    // 5. Complete idempotency record
     await this.idempotencyRepository.completeRecord(idempotencyRecord.id, orderItem);
 
     this.logger.log(ORDERS_LOGS.orderCreated(finalOrder.id, userId, pair, side));
@@ -213,7 +372,8 @@ export class OrdersService implements OnModuleInit {
   }
 
   /**
-   * Cancels an existing order, removes it from orderbook and unlocks remaining reserved funds.
+   * Cancels an existing order, removes it from orderbook, unlocks remaining reserved funds
+   * via synchronous gRPC, and atomically writes OrderCancelledEvent to outbox_events.
    */
   async cancelOrder(request: CancelOrderRequest): Promise<OrderItem> {
     const { orderId, userId, idempotencyKey } = request;
@@ -240,22 +400,60 @@ export class OrdersService implements OnModuleInit {
       });
     }
 
-    const cancelledOrder = await this.ordersRepository.cancel(orderId, userId);
-    if (!cancelledOrder) {
-      throw new RpcException({
-        code: HttpStatus.BAD_REQUEST,
-        message: ORDERS_ERRORS.orderAlreadyFilled(orderId),
-      });
-    }
+    const correlationId = uuidv7();
 
-    // Remove from in-memory orderbook
+    // 1. Transactional cancellation in DB + OrderCancelledEvent in outbox
+    const cancelledOrder = await this.db.transaction(async (tx) => {
+      const updated = await this.ordersRepository.cancel(orderId, userId, tx);
+      if (!updated) {
+        throw new RpcException({
+          code: HttpStatus.BAD_REQUEST,
+          message: ORDERS_ERRORS.orderAlreadyFilled(orderId),
+        });
+      }
+
+      const now = Date.now();
+      const cancelPayload: OrderCancelledEvent = {
+        orderId: updated.id,
+        userId: updated.userId,
+        symbol: updated.pair,
+        reason: 'User cancelled',
+        timestamp: now,
+      };
+
+      await this.outboxRepository.insert(
+        {
+          id: uuidv7(),
+          aggregateType: 'order',
+          aggregateId: updated.id,
+          partitionKey: updated.pair,
+          eventType: 'order_cancelled',
+          payload: {
+            eventId: uuidv7(),
+            eventType: 'order.cancelled',
+            aggregateId: updated.id,
+            partitionKey: updated.pair,
+            timestamp: now,
+            correlationId,
+            payload: cancelPayload,
+          },
+          status: 'PENDING',
+          retryCount: 0,
+        },
+        tx,
+      );
+
+      return updated;
+    });
+
+    // 2. Remove from in-memory orderbook
     await this.orderbookService.removeOrder(
       orderId,
       cancelledOrder.pair,
       cancelledOrder.side as OrderSide,
     );
 
-    // Unlock remaining reserved balance in accounts-service
+    // 3. Unlock remaining reserved balance in accounts-service synchronously for immediate UI reflection
     const [baseCurrency, quoteCurrency] = cancelledOrder.pair.split('_') as [Currency, Currency];
     const isBuy = (cancelledOrder.side as OrderSide) === OrderSide.BUY;
     const unlockCurrency = isBuy ? quoteCurrency : baseCurrency;
@@ -269,6 +467,7 @@ export class OrdersService implements OnModuleInit {
       const metadata = new Metadata();
       metadata.set(GRPC_METADATA_KEYS.serviceId, SERVICE_CALLER_IDS.ordersService);
       metadata.set(GRPC_METADATA_KEYS.callerId, userId);
+      metadata.set(GRPC_METADATA_KEYS.correlationId, correlationId);
 
       try {
         await firstValueFrom(
@@ -298,66 +497,75 @@ export class OrdersService implements OnModuleInit {
    * Retrieves single order by ID and user.
    */
   async getOrder(request: GetOrderRequest): Promise<OrderItem> {
-    const order = await this.ordersRepository.findByIdAndUserId(request.orderId, request.userId);
+    const { orderId, userId } = request;
+    const order = await this.ordersRepository.findByIdAndUserId(orderId, userId);
+
     if (!order) {
       throw new RpcException({
         code: HttpStatus.NOT_FOUND,
-        message: ORDERS_ERRORS.orderNotFound(request.orderId),
+        message: ORDERS_ERRORS.orderNotFound(orderId),
       });
     }
+
     return this.mapOrderToItem(order);
   }
 
   /**
-   * Lists orders for a user with optional filtering and pagination.
+   * Retrieves paginated orders for a user.
    */
-  async getOrders(request: GetOrdersRequest): Promise<{ orders: OrderItem[]; total: number }> {
-    const { items, total } = await this.ordersRepository.findMany({
-      userId: request.userId,
-      pair: request.pair,
-      status: request.status,
-      limit: request.limit,
-      offset: request.offset,
+  async getOrders(request: GetOrdersRequest): Promise<{ items: OrderItem[]; total: number }> {
+    const { userId, pair, status, limit, offset } = request;
+
+    const result = await this.ordersRepository.findMany({
+      userId,
+      pair: pair || undefined,
+      status: status || undefined,
+      limit: limit || 20,
+      offset: offset || 0,
     });
 
     return {
-      orders: items.map((o) => this.mapOrderToItem(o)),
-      total,
+      items: result.items.map((order) => this.mapOrderToItem(order)),
+      total: result.total,
     };
   }
 
   /**
-   * Returns aggregated orderbook depth for a trading pair.
+   * Retrieves orderbook depth for a pair.
    */
   async getOrderBook(request: GetOrderBookRequest): Promise<GetOrderBookResponse> {
-    if (!SUPPORTED_PAIRS.includes(request.pair as (typeof SUPPORTED_PAIRS)[number])) {
+    const { pair, depth = 20 } = request;
+
+    if (!SUPPORTED_PAIRS.includes(pair as (typeof SUPPORTED_PAIRS)[number])) {
       throw new RpcException({
         code: HttpStatus.BAD_REQUEST,
-        message: ORDERS_ERRORS.unsupportedPair(request.pair),
+        message: ORDERS_ERRORS.unsupportedPair(pair),
       });
     }
 
-    return this.orderbookService.getOrderBook(request.pair, request.depth ?? 50);
+    return this.orderbookService.getOrderBook(pair, depth);
   }
 
   private validateCreateOrderRequest(request: CreateOrderRequest): void {
-    if (!SUPPORTED_PAIRS.includes(request.pair as (typeof SUPPORTED_PAIRS)[number])) {
+    const { pair, price, amount } = request;
+
+    if (!SUPPORTED_PAIRS.includes(pair as (typeof SUPPORTED_PAIRS)[number])) {
       throw new RpcException({
         code: HttpStatus.BAD_REQUEST,
-        message: ORDERS_ERRORS.unsupportedPair(request.pair),
+        message: ORDERS_ERRORS.unsupportedPair(pair),
       });
     }
 
-    const price = new BigNumber(request.price);
-    if (price.isNaN() || price.isLessThanOrEqualTo(0)) {
+    const priceBn = new BigNumber(price);
+    if (!priceBn.isFinite() || priceBn.isLessThanOrEqualTo(0)) {
       throw new RpcException({
         code: HttpStatus.BAD_REQUEST,
         message: ORDERS_ERRORS.invalidPrice,
       });
     }
 
-    const amount = new BigNumber(request.amount);
-    if (amount.isNaN() || amount.isLessThanOrEqualTo(0)) {
+    const amountBn = new BigNumber(amount);
+    if (!amountBn.isFinite() || amountBn.isLessThanOrEqualTo(0)) {
       throw new RpcException({
         code: HttpStatus.BAD_REQUEST,
         message: ORDERS_ERRORS.invalidAmount,

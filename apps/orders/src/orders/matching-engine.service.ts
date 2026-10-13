@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import BigNumber from 'bignumber.js';
+import { v7 as uuidv7 } from 'uuid';
 import { OrderSide, OrderStatus } from '@app/contracts';
+import type { DrizzleDB } from '../database/database.module';
 import type { Order } from '../database/schema/orders.schema';
 import { OrderbookService } from './orderbook.service';
 import { ORDERS_LOGS } from './orders.constants';
 import { OrdersRepository } from './orders.repository';
-import { MatchResult, OrderbookEntry } from './orders.types';
+import { MatchedTrade, MatchResult, OrderbookEntry } from './orders.types';
 
 @Injectable()
 export class MatchingEngineService {
@@ -18,8 +20,9 @@ export class MatchingEngineService {
 
   /**
    * Executes matching for an incoming order against opposing orders in the orderbook.
+   * Runs database updates within the provided transaction context (Unit of Work).
    */
-  async match(takerOrder: Order): Promise<MatchResult> {
+  async match(takerOrder: Order, tx?: DrizzleDB): Promise<MatchResult> {
     const opposingSide =
       (takerOrder.side as OrderSide) === OrderSide.BUY ? OrderSide.SELL : OrderSide.BUY;
     const opposingOrders = await this.orderbookService.getBestOpposingOrders(
@@ -27,7 +30,7 @@ export class MatchingEngineService {
       takerOrder.side as OrderSide,
     );
 
-    const trades: MatchResult['trades'] = [];
+    const trades: MatchedTrade[] = [];
     const makerOrdersUpdated: Order[] = [];
 
     let currentTakerRemaining = new BigNumber(takerOrder.remainingAmount);
@@ -37,6 +40,14 @@ export class MatchingEngineService {
     for (const makerEntry of opposingOrders) {
       if (currentTakerRemaining.isZero()) {
         break;
+      }
+
+      // Self-Trade Prevention (STP): Prevent matching when maker and taker belong to the same user
+      if (makerEntry.userId === takerOrder.userId) {
+        this.logger.warn(
+          `Self-Trade Prevention triggered for order ${takerOrder.id} and maker ${makerEntry.orderId} (user: ${takerOrder.userId}). Skipping maker.`,
+        );
+        continue;
       }
 
       const makerPrice = new BigNumber(makerEntry.price);
@@ -63,7 +74,7 @@ export class MatchingEngineService {
 
       // Update maker amounts
       const newMakerRemaining = makerRemaining.minus(matchAmount);
-      const makerOrderInDb = await this.ordersRepository.findById(makerEntry.orderId);
+      const makerOrderInDb = await this.ordersRepository.findById(makerEntry.orderId, tx);
       const currentMakerFilled = makerOrderInDb
         ? new BigNumber(makerOrderInDb.filledAmount).plus(matchAmount)
         : matchAmount;
@@ -72,11 +83,15 @@ export class MatchingEngineService {
         ? OrderStatus.FILLED
         : OrderStatus.PARTIALLY_FILLED;
 
-      const updatedMaker = await this.ordersRepository.updateExecution(makerEntry.orderId, {
-        filledAmount: currentMakerFilled.toFixed(8),
-        remainingAmount: newMakerRemaining.toFixed(8),
-        status: makerStatus,
-      });
+      const updatedMaker = await this.ordersRepository.updateExecution(
+        makerEntry.orderId,
+        {
+          filledAmount: currentMakerFilled.toFixed(8),
+          remainingAmount: newMakerRemaining.toFixed(8),
+          status: makerStatus,
+        },
+        tx,
+      );
 
       if (updatedMaker) {
         makerOrdersUpdated.push(updatedMaker);
@@ -92,11 +107,29 @@ export class MatchingEngineService {
         );
       }
 
+      const isTakerBuyer = (takerOrder.side as OrderSide) === OrderSide.BUY;
+      const buyOrderId = isTakerBuyer ? takerOrder.id : makerEntry.orderId;
+      const sellOrderId = isTakerBuyer ? makerEntry.orderId : takerOrder.id;
+      const buyerUserId = isTakerBuyer ? takerOrder.userId : makerEntry.userId;
+      const sellerUserId = isTakerBuyer ? makerEntry.userId : takerOrder.userId;
+      const buyerLimitPrice = isTakerBuyer ? takerOrder.price : makerEntry.price;
+
       trades.push({
+        tradeId: uuidv7(),
         makerOrderId: makerEntry.orderId,
         takerOrderId: takerOrder.id,
+        makerUserId: makerEntry.userId,
+        takerUserId: takerOrder.userId,
+        buyOrderId,
+        sellOrderId,
+        buyerUserId,
+        sellerUserId,
+        symbol: takerOrder.pair,
         price: executionPrice,
-        amount: matchAmount.toFixed(8),
+        quantity: matchAmount.toFixed(8),
+        buyerLimitPrice,
+        buyerFee: '0',
+        sellerFee: '0',
       });
 
       this.logger.log(
@@ -116,11 +149,15 @@ export class MatchingEngineService {
         ? OrderStatus.PARTIALLY_FILLED
         : OrderStatus.OPEN;
 
-    const updatedTaker = await this.ordersRepository.updateExecution(takerOrder.id, {
-      filledAmount: currentTakerFilled.toFixed(8),
-      remainingAmount: currentTakerRemaining.toFixed(8),
-      status: takerStatus,
-    });
+    const updatedTaker = await this.ordersRepository.updateExecution(
+      takerOrder.id,
+      {
+        filledAmount: currentTakerFilled.toFixed(8),
+        remainingAmount: currentTakerRemaining.toFixed(8),
+        status: takerStatus,
+      },
+      tx,
+    );
 
     // If taker still has remaining volume, insert it into the orderbook
     if (!currentTakerRemaining.isZero()) {

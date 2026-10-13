@@ -13,13 +13,26 @@ export interface OrderbookEntry {
   createdAt: number;
 }
 
+export interface MatchedTrade {
+  tradeId: string;
+  makerOrderId: string;
+  takerOrderId: string;
+  makerUserId: string;
+  takerUserId: string;
+  buyOrderId: string;
+  sellOrderId: string;
+  buyerUserId: string;
+  sellerUserId: string;
+  symbol: string;
+  price: string;
+  quantity: string;
+  buyerLimitPrice: string;
+  buyerFee: string;
+  sellerFee: string;
+}
+
 export interface MatchResult {
   takerOrder: Order;
   makerOrdersUpdated: Order[];
-  trades: Array<{
-    makerOrderId: string;
-    takerOrderId: string;
-    price: string;
-    amount: string;
-  }>;
+  trades: MatchedTrade[];
 }
