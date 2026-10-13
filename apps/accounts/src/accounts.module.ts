@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { DEFAULT_ENV_FILES } from '@app/common/constants';
 import { BalancesModule } from './balances';
 import { appConfig, databaseConfig, validateEnvironment } from './config';
+import { ConsumersModule } from './consumers/consumers.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -13,8 +15,10 @@ import { DatabaseModule } from './database/database.module';
       load: [appConfig, databaseConfig],
       envFilePath: [...DEFAULT_ENV_FILES],
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     BalancesModule,
+    ConsumersModule,
   ],
 })
 export class AccountsModule {}
