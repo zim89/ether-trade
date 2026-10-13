@@ -62,3 +62,4 @@ export {
 
 export * from './orders.types';
 export * from './transfers';
+export * from './events';
