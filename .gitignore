@@ -62,3 +62,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Foundry
 /out
 /cache
+
+# AI Agent Rules
+AGENTS.md
