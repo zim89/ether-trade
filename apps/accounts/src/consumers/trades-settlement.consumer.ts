@@ -8,6 +8,7 @@ import {
   getKafkaTopicName,
   KAFKA_CONSUMER_GROUPS,
   KAFKA_DOMAINS,
+  KAFKA_TOPIC_EVENTS,
 } from '@app/common/kafka/kafka.constants';
 import { KafkaBatchConsumerPayload } from '@app/common/kafka/kafka.types';
 import type { DomainEventEnvelope, TradeExecutedEvent } from '@app/contracts';
@@ -37,7 +38,11 @@ export class TradesSettlementConsumer extends BaseKafkaConsumer {
     const appEnv = (
       configService.get<string>(SHARED_ENV_KEYS.appEnv) || SHARED_ENV_DEFAULTS.appEnv
     ).toLowerCase();
-    const tradeTopic = getKafkaTopicName(appEnv, KAFKA_DOMAINS.matching, 'trade_executed');
+    const tradeTopic = getKafkaTopicName(
+      appEnv,
+      KAFKA_DOMAINS.matching,
+      KAFKA_TOPIC_EVENTS.tradeExecuted,
+    );
 
     super(configService, producerService, {
       groupId: KAFKA_CONSUMER_GROUPS.accountsSettlement,
@@ -129,12 +134,11 @@ export class TradesSettlementConsumer extends BaseKafkaConsumer {
       );
 
       // Apply updates to Buyer Quote (deduct locked cost, refund surplus from locked to available)
-      const buyerLockedTotal = sql`${quoteCost}::numeric + ${surplusRefund}::numeric`;
       const [updatedBuyerQuote] = await tx
         .update(accounts)
         .set({
           availableBalance: sql`${accounts.availableBalance} + ${surplusRefund}::numeric`,
-          lockedBalance: sql`${accounts.lockedBalance} - ${buyerLockedTotal}`,
+          lockedBalance: sql`${accounts.lockedBalance} - (${quoteCost}::numeric + ${surplusRefund}::numeric)`,
           updatedAt: new Date(),
         })
         .where(eq(accounts.id, buyerQuote.id))

@@ -32,6 +32,19 @@ export const KAFKA_DOMAINS = {
 } as const;
 
 /**
+ * Standard event names used in Kafka topics (<env>.<domain>.<event>).
+ */
+export const KAFKA_TOPIC_EVENTS = {
+  orderPlaced: 'order_placed',
+  orderCancelled: 'order_cancelled',
+  orderFilled: 'order_filled',
+  tradeExecuted: 'trade_executed',
+  depositConfirmed: 'deposit_confirmed',
+  withdrawalCompleted: 'withdrawal_completed',
+  withdrawalFailed: 'withdrawal_failed',
+} as const;
+
+/**
  * Standard Consumer Group names.
  */
 export const KAFKA_CONSUMER_GROUPS = {

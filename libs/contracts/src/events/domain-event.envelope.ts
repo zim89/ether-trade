@@ -1,4 +1,17 @@
 /**
+ * Closed set of domain event types emitted across platform microservices.
+ */
+export enum DomainEventType {
+  ORDER_PLACED = 'order.placed',
+  ORDER_CANCELLED = 'order.cancelled',
+  ORDER_FILLED = 'order.filled',
+  TRADE_EXECUTED = 'matching.trade_executed',
+  DEPOSIT_CONFIRMED = 'transfers.deposit_confirmed',
+  WITHDRAWAL_COMPLETED = 'transfers.withdrawal_completed',
+  WITHDRAWAL_FAILED = 'transfers.withdrawal_failed',
+}
+
+/**
  * Standard domain event envelope ensuring consistent metadata across all Kafka events.
  */
 export interface DomainEventEnvelope<T = unknown> {
@@ -8,9 +21,9 @@ export interface DomainEventEnvelope<T = unknown> {
   readonly eventId: string;
 
   /**
-   * Domain event type discriminator (e.g. 'order.placed', 'trade.executed').
+   * Domain event type discriminator.
    */
-  readonly eventType: string;
+  readonly eventType: DomainEventType;
 
   /**
    * Identifier of the root aggregate that emitted the event (e.g. orderId, tradeId, userId).

@@ -61,3 +61,11 @@ export const DEFAULT_CURRENCY = Currency.USDT;
  * List of currently active supported currencies.
  */
 export const SUPPORTED_CURRENCIES = Object.values(Currency) as readonly Currency[];
+
+/**
+ * Standard supported trading pairs.
+ */
+export const TRADING_PAIRS = {
+  ETH_USDT: `${Currency.ETH}_${Currency.USDT}`,
+  BTC_USDT: `${Currency.BTC}_${Currency.USDT}`,
+} as const;
