@@ -17,6 +17,14 @@ export const ENV_KEYS = {
   jwtSecret: 'JWT_SECRET',
   grpcDefaultDeadlineMs: 'GRPC_DEFAULT_DEADLINE_MS',
   ordersGrpcDeadlineMs: 'ORDERS_GRPC_DEADLINE_MS',
+  wsPort: 'WS_PORT',
+  wsPath: 'WS_PATH',
+  redisHost: 'REDIS_HOST',
+  redisPort: 'REDIS_PORT',
+  redisPassword: 'REDIS_PASSWORD',
+  kafkaBrokers: 'KAFKA_BROKERS',
+  kafkaClientId: 'KAFKA_CLIENT_ID',
+  appEnv: 'APP_ENV',
 } as const;
 
 /**
@@ -33,6 +41,12 @@ export const ENV_DEFAULTS = {
   cookieSecret: 'dev-cookie-secret-min-32-chars-long-local',
   grpcDefaultDeadlineMs: 5000,
   ordersGrpcDeadlineMs: 2000,
+  wsPath: '/ws',
+  redisHost: 'localhost',
+  redisPort: 6379,
+  kafkaBrokers: 'localhost:9094',
+  kafkaClientId: 'api-gateway',
+  appEnv: 'dev',
 } as const;
 
 /**

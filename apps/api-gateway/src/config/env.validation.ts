@@ -50,6 +50,44 @@ export class EnvironmentVariables {
   @Max(120000)
   @IsOptional()
   GRPC_DEFAULT_DEADLINE_MS: number = ENV_DEFAULTS.grpcDefaultDeadlineMs;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  @IsOptional()
+  WS_PORT?: number;
+
+  @IsString()
+  @IsOptional()
+  WS_PATH: string = ENV_DEFAULTS.wsPath;
+
+  @IsString()
+  @IsNotEmpty()
+  REDIS_HOST: string = ENV_DEFAULTS.redisHost;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  @IsOptional()
+  REDIS_PORT: number = ENV_DEFAULTS.redisPort;
+
+  @IsString()
+  @IsOptional()
+  REDIS_PASSWORD?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  KAFKA_BROKERS: string = ENV_DEFAULTS.kafkaBrokers;
+
+  @IsString()
+  @IsOptional()
+  KAFKA_CLIENT_ID: string = ENV_DEFAULTS.kafkaClientId;
+
+  @IsString()
+  @IsOptional()
+  APP_ENV: string = ENV_DEFAULTS.appEnv;
 }
 
 /**

@@ -12,4 +12,12 @@ export interface GatewayConfig {
   transfersGrpcUrl: string;
   grpcDefaultDeadlineMs: number;
   ordersGrpcDeadlineMs: number;
+  wsPort?: number;
+  wsPath: string;
+  redisHost: string;
+  redisPort: number;
+  redisPassword?: string;
+  kafkaBrokers: string;
+  kafkaClientId: string;
+  appEnv: string;
 }
