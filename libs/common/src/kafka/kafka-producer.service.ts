@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Kafka, Producer, RecordMetadata } from 'kafkajs';
+import { Kafka, Partitioners, Producer, RecordMetadata } from 'kafkajs';
 import { CONFIG_NAMESPACES } from '../constants';
 import { KafkaConfig } from './kafka.config';
 import { KafkaProducerRecord } from './kafka.types';
@@ -27,6 +27,7 @@ export class KafkaProducerService implements OnModuleInit, OnApplicationShutdown
     });
 
     this.producer = this.kafka.producer({
+      createPartitioner: Partitioners.DefaultPartitioner,
       allowAutoTopicCreation: true,
       transactionTimeout: 30000,
     });
