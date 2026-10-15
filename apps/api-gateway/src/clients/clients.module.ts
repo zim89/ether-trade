@@ -4,6 +4,7 @@ import { ClientGrpc, ClientsModule as NestClientsModule, Transport } from '@nest
 import { CONFIG_NAMESPACES } from '@app/common/constants';
 import {
   AccountsServiceClient,
+  CopyTradingServiceClient,
   getServiceProtoPath,
   GRPC_SERVICE_KEYS,
   GRPC_SERVICES_CONFIG,
@@ -83,6 +84,22 @@ import { GatewayConfig } from '../config';
           };
         },
       },
+      {
+        name: PROTO_PACKAGES.copyTrading,
+        imports: [ConfigModule],
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService) => {
+          const config = configService.getOrThrow<GatewayConfig>(CONFIG_NAMESPACES.gateway);
+          return {
+            transport: Transport.GRPC,
+            options: {
+              package: PROTO_PACKAGES.copyTrading,
+              protoPath: getServiceProtoPath(GRPC_SERVICE_KEYS.copyTrading),
+              url: config.copyTradingGrpcUrl || GRPC_SERVICES_CONFIG.copyTrading.defaultUrl,
+            },
+          };
+        },
+      },
     ]),
   ],
   providers: [
@@ -114,6 +131,13 @@ import { GatewayConfig } from '../config';
       },
       inject: [PROTO_PACKAGES.transfers],
     },
+    {
+      provide: PROTO_SERVICES.copyTrading,
+      useFactory: (client: ClientGrpc): CopyTradingServiceClient => {
+        return client.getService<CopyTradingServiceClient>(PROTO_SERVICES.copyTrading);
+      },
+      inject: [PROTO_PACKAGES.copyTrading],
+    },
   ],
   exports: [
     NestClientsModule,
@@ -121,6 +145,7 @@ import { GatewayConfig } from '../config';
     PROTO_SERVICES.accounts,
     PROTO_SERVICES.orders,
     PROTO_SERVICES.transfers,
+    PROTO_SERVICES.copyTrading,
   ],
 })
 export class ClientsModule {}

@@ -38,6 +38,10 @@ export class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
+  COPY_TRADING_GRPC_URL: string = ENV_DEFAULTS.copyTradingGrpcUrl;
+
+  @IsString()
+  @IsNotEmpty()
   COOKIE_SECRET: string = ENV_DEFAULTS.cookieSecret;
 
   @IsString()

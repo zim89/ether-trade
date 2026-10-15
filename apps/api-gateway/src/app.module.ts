@@ -5,6 +5,7 @@ import { BalancesModule } from './balances';
 import { ClientsModule } from './clients';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { gatewayConfig, validateEnvironment } from './config';
+import { CopyTradingModule } from './copy-trading';
 import { OrdersModule } from './orders';
 import { SandboxModule } from './sandbox';
 import { TransfersModule } from './transfers';
@@ -23,6 +24,7 @@ import { WebSocketsModule } from './websockets';
     SandboxModule,
     OrdersModule,
     TransfersModule,
+    CopyTradingModule,
     WebSocketsModule,
   ],
 })
