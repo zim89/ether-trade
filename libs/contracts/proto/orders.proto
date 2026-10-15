@@ -87,4 +87,5 @@ message GetOrderBookResponse {
   repeated OrderBookLevel bids = 2; // Sorted descending by price
   repeated OrderBookLevel asks = 3; // Sorted ascending by price
   int64 timestamp = 4;
+  int64 sequence_id = 5;
 }

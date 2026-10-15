@@ -15,6 +15,7 @@ describe('OrderbookService', () => {
       Promise<string[]>,
       [string, { start: number; end: number }, { reverse?: boolean }?]
     >;
+    customCommand: jest.Mock<Promise<any>, [string[]]>;
   };
   let mockRedisService: jest.Mocked<Partial<RedisService>>;
 
@@ -72,6 +73,22 @@ describe('OrderbookService', () => {
           return Promise.resolve(slice.map((item) => item[0]));
         },
       ),
+
+      customCommand: jest.fn((args: string[]) => {
+        const [cmd, key] = args;
+        if (cmd === 'INCR') {
+          const current = hashes.get('__sequences__')?.[key] || '0';
+          const nextVal = (parseInt(current, 10) + 1).toString();
+          const currMap = hashes.get('__sequences__') || {};
+          hashes.set('__sequences__', { ...currMap, [key]: nextVal });
+          return Promise.resolve(parseInt(nextVal, 10));
+        }
+        if (cmd === 'GET') {
+          const val = hashes.get('__sequences__')?.[key] || null;
+          return Promise.resolve(val);
+        }
+        return Promise.resolve(null);
+      }),
     };
 
     mockRedisService = {

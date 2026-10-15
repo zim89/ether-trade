@@ -19,4 +19,14 @@ export const gatewayConfig = registerAs(CONFIG_NAMESPACES.gateway, (): GatewayCo
   ordersGrpcDeadlineMs: process.env[ENV_KEYS.ordersGrpcDeadlineMs]
     ? Number(process.env[ENV_KEYS.ordersGrpcDeadlineMs])
     : ENV_DEFAULTS.ordersGrpcDeadlineMs,
+  wsPort: process.env[ENV_KEYS.wsPort] ? Number(process.env[ENV_KEYS.wsPort]) : undefined,
+  wsPath: process.env[ENV_KEYS.wsPath] ?? ENV_DEFAULTS.wsPath,
+  redisHost: process.env[ENV_KEYS.redisHost] ?? ENV_DEFAULTS.redisHost,
+  redisPort: process.env[ENV_KEYS.redisPort]
+    ? Number(process.env[ENV_KEYS.redisPort])
+    : ENV_DEFAULTS.redisPort,
+  redisPassword: process.env[ENV_KEYS.redisPassword] || undefined,
+  kafkaBrokers: process.env[ENV_KEYS.kafkaBrokers] ?? ENV_DEFAULTS.kafkaBrokers,
+  kafkaClientId: process.env[ENV_KEYS.kafkaClientId] ?? ENV_DEFAULTS.kafkaClientId,
+  appEnv: process.env[ENV_KEYS.appEnv] ?? ENV_DEFAULTS.appEnv,
 }));

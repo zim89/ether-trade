@@ -8,6 +8,7 @@ import { gatewayConfig, validateEnvironment } from './config';
 import { OrdersModule } from './orders';
 import { SandboxModule } from './sandbox';
 import { TransfersModule } from './transfers';
+import { WebSocketsModule } from './websockets';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { TransfersModule } from './transfers';
     SandboxModule,
     OrdersModule,
     TransfersModule,
+    WebSocketsModule,
   ],
 })
 export class AppModule implements NestModule {

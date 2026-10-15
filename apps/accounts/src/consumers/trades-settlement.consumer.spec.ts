@@ -82,6 +82,7 @@ describe('TradesSettlementConsumer (Unit)', () => {
       buyerLimitPrice: '3000.00000000',
       buyerFee: '0',
       sellerFee: '0',
+      sequenceId: 1,
       timestamp: Date.now(),
     };
 
@@ -138,6 +139,7 @@ describe('TradesSettlementConsumer (Unit)', () => {
       buyerLimitPrice: '3000.00000000',
       buyerFee: '0',
       sellerFee: '0',
+      sequenceId: 1,
       timestamp: Date.now(),
     };
 

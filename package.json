@@ -45,7 +45,7 @@
     "test:unit": "jest --config ./jest.unit.json --passWithNoTests",
     "test:integration": "jest --config ./jest.integration.json --runInBand --passWithNoTests",
     "test:e2e": "jest --config ./jest.e2e.json --runInBand --passWithNoTests",
-    "test:contracts": "buf breaking libs/contracts --against '.git#branch=main,subdir=libs/contracts'",
+    "test:contracts": "buf breaking libs/contracts --against '.git#branch=origin/main,subdir=libs/contracts'",
     "test:all": "pnpm test:unit && pnpm test:integration",
     "test:watch": "jest --config ./jest.unit.json --watch",
     "test:cov": "jest --config ./jest.unit.json --coverage",
@@ -63,8 +63,10 @@
     "@nestjs/microservices": "^11.2.3",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-ws": "^11.2.7",
     "@nestjs/schedule": "^12.0.2",
     "@nestjs/swagger": "^11.4.7",
+    "@nestjs/websockets": "^11.2.7",
     "@valkey/valkey-glide": "^2.5.1",
     "argon2": "^0.45.1",
     "bignumber.js": "^11.1.5",
@@ -80,7 +82,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "uuid": "^14.0.2",
-    "viem": "^2.56.0"
+    "viem": "^2.56.0",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@bufbuild/buf": "^1.73.0",
@@ -99,6 +102,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",
     "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

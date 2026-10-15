@@ -38,6 +38,7 @@ export const ORDER_REDIS_KEYS = {
   orderbookBids: (pair: string) => `orderbook:buy:${pair}`,
   orderbookAsks: (pair: string) => `orderbook:sell:${pair}`,
   orderDetails: (orderId: string) => `order:${orderId}`,
+  orderbookSequence: (pair: string) => `orderbook:seq:${pair}`,
 } as const;
 
 export const SUPPORTED_PAIRS = ['BTC_USDT', 'ETH_USDT'] as const;
