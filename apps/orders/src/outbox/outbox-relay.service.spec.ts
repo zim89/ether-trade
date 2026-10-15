@@ -84,6 +84,8 @@ describe('OutboxRelayService (Unit)', () => {
         updatedAt: new Date(),
         retryCount: 0,
         lastError: null,
+        traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+        tracestate: null,
       },
       {
         id: 'outbox-2',
@@ -97,6 +99,8 @@ describe('OutboxRelayService (Unit)', () => {
         updatedAt: new Date(),
         retryCount: 0,
         lastError: null,
+        traceparent: null,
+        tracestate: null,
       },
     ];
 
@@ -127,6 +131,7 @@ describe('OutboxRelayService (Unit)', () => {
         [KAFKA_HEADERS.originService]: KAFKA_CLIENT_IDS.orders,
         [KAFKA_HEADERS.eventId]: 'outbox-1',
         [KAFKA_HEADERS.aggregateId]: 'order-123',
+        [KAFKA_HEADERS.traceparent]: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
       },
     });
 

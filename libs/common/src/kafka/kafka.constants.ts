@@ -10,6 +10,8 @@ export const KAFKA_HEADERS = {
   dlqOriginalOffset: 'x-dlq-original-offset',
   dlqError: 'x-dlq-error',
   dlqTimestamp: 'x-dlq-timestamp',
+  traceparent: 'traceparent',
+  tracestate: 'tracestate',
 } as const;
 
 /**

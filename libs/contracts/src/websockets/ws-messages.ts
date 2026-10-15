@@ -63,6 +63,7 @@ export interface WsTradeMessage {
   readonly quantity: string;
   readonly side?: OrderSide;
   readonly timestamp: number;
+  readonly traceId?: string;
 }
 
 /**
@@ -85,6 +86,7 @@ export interface WsUserOrderUpdateMessage {
   readonly filledQuantity: string;
   readonly remainingQuantity: string;
   readonly timestamp: number;
+  readonly traceId?: string;
 }
 
 /**
@@ -99,6 +101,7 @@ export interface WsUserTransferUpdateMessage {
   readonly status: DepositStatus | WithdrawalStatus;
   readonly txHash?: string;
   readonly timestamp: number;
+  readonly traceId?: string;
 }
 
 /**

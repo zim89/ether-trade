@@ -98,15 +98,23 @@ export class TransfersOutboxRelayService implements OnModuleInit, OnApplicationS
       for (const event of pendingEvents) {
         const topic = getKafkaTopicName(this.appEnv, KAFKA_DOMAINS.transfers, event.eventType);
 
+        const headers: Record<string, string> = {
+          [KAFKA_HEADERS.originService]: KAFKA_CLIENT_IDS.transfers,
+          [KAFKA_HEADERS.eventId]: event.id,
+          [KAFKA_HEADERS.aggregateId]: event.aggregateId,
+        };
+        if (event.traceparent) {
+          headers[KAFKA_HEADERS.traceparent] = event.traceparent;
+        }
+        if (event.tracestate) {
+          headers[KAFKA_HEADERS.tracestate] = event.tracestate;
+        }
+
         records.push({
           topic,
           key: event.partitionKey,
           value: event.payload,
-          headers: {
-            [KAFKA_HEADERS.originService]: KAFKA_CLIENT_IDS.transfers,
-            [KAFKA_HEADERS.eventId]: event.id,
-            [KAFKA_HEADERS.aggregateId]: event.aggregateId,
-          },
+          headers,
         });
 
         publishedIds.push(event.id);

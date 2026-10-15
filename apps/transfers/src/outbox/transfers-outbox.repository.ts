@@ -1,5 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { and, eq, inArray, lt, sql } from 'drizzle-orm';
+import { injectCurrentTraceContext } from '@app/common/telemetry';
 import { OutboxStatus } from '@app/contracts';
 import { DRIZZLE_CLIENT } from '../database/database.constants';
 import type { DrizzleDB } from '../database/database.module';
@@ -17,7 +18,13 @@ export class TransfersOutboxRepository {
    */
   async insert(event: NewOutboxEvent, tx?: DrizzleDB): Promise<OutboxEvent> {
     const client = tx ?? this.db;
-    const [created] = await client.insert(outboxEvents).values(event).returning();
+    const currentTrace = injectCurrentTraceContext();
+    const eventWithTrace: NewOutboxEvent = {
+      ...event,
+      traceparent: event.traceparent ?? currentTrace.traceparent,
+      tracestate: event.tracestate ?? currentTrace.tracestate,
+    };
+    const [created] = await client.insert(outboxEvents).values(eventWithTrace).returning();
     return created;
   }
 

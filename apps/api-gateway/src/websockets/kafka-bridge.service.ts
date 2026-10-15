@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { trace } from '@opentelemetry/api';
 import { BaseKafkaConsumer } from '@app/common/kafka/kafka-consumer.abstract';
 import { KafkaProducerService } from '@app/common/kafka/kafka-producer.service';
 import {
@@ -107,7 +108,16 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
     }
   }
 
+  private getActiveTraceId(): string | undefined {
+    const activeSpan = trace.getActiveSpan();
+    if (!activeSpan) return undefined;
+    const spanContext = activeSpan.spanContext();
+    return trace.isSpanContextValid(spanContext) ? spanContext.traceId : undefined;
+  }
+
   private async handleTradeExecuted(event: TradeExecutedEvent): Promise<void> {
+    const traceId = this.getActiveTraceId();
+
     // 1. Broadcast to public trades feed: trades:<symbol>
     const tradeMsg: WsTradeMessage = {
       channel: `trades:${event.symbol}`,
@@ -116,6 +126,7 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
       price: event.price,
       quantity: event.quantity,
       timestamp: event.timestamp,
+      ...(traceId && { traceId }),
     };
     await this.valkeyPubSub.publish(`trades:${event.symbol}`, JSON.stringify(tradeMsg));
 
@@ -129,6 +140,7 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
       filledQuantity: event.quantity,
       remainingQuantity: '0',
       timestamp: event.timestamp,
+      ...(traceId && { traceId }),
     };
     await this.valkeyPubSub.publish(
       `user:${event.buyerUserId}:orders`,
@@ -144,6 +156,7 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
       filledQuantity: event.quantity,
       remainingQuantity: '0',
       timestamp: event.timestamp,
+      ...(traceId && { traceId }),
     };
     await this.valkeyPubSub.publish(
       `user:${event.sellerUserId}:orders`,
@@ -152,6 +165,8 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
   }
 
   private async handleOrderPlaced(event: OrderPlacedEvent): Promise<void> {
+    const traceId = this.getActiveTraceId();
+
     // 1. Broadcast orderbook level delta: orderbook:<symbol>
     const deltaMsg: WsOrderBookUpdateMessage = {
       channel: `orderbook:${event.symbol}`,
@@ -174,11 +189,14 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
       filledQuantity: '0',
       remainingQuantity: event.quantity,
       timestamp: event.timestamp,
+      ...(traceId && { traceId }),
     };
     await this.valkeyPubSub.publish(`user:${event.userId}:orders`, JSON.stringify(userMsg));
   }
 
   private async handleOrderCancelled(event: OrderCancelledEvent): Promise<void> {
+    const traceId = this.getActiveTraceId();
+
     // 1. Broadcast orderbook level delta: orderbook:<symbol>
     const deltaMsg: WsOrderBookUpdateMessage = {
       channel: `orderbook:${event.symbol}`,
@@ -201,11 +219,13 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
       filledQuantity: '0',
       remainingQuantity: event.remainingQuantity,
       timestamp: event.timestamp,
+      ...(traceId && { traceId }),
     };
     await this.valkeyPubSub.publish(`user:${event.userId}:orders`, JSON.stringify(userMsg));
   }
 
   private async handleOrderFilled(event: OrderFilledEvent): Promise<void> {
+    const traceId = this.getActiveTraceId();
     const userMsg: WsUserOrderUpdateMessage = {
       channel: 'user:orders',
       orderId: event.orderId,
@@ -214,11 +234,13 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
       filledQuantity: event.filledQuantity,
       remainingQuantity: event.remainingQuantity,
       timestamp: event.timestamp,
+      ...(traceId && { traceId }),
     };
     await this.valkeyPubSub.publish(`user:${event.userId}:orders`, JSON.stringify(userMsg));
   }
 
   private async handleDepositConfirmed(event: DepositConfirmedEvent): Promise<void> {
+    const traceId = this.getActiveTraceId();
     const transferMsg: WsUserTransferUpdateMessage = {
       channel: 'user:transfers',
       transferId: event.depositId,
@@ -228,11 +250,13 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
       status: DepositStatus.CREDITED,
       txHash: event.txHash,
       timestamp: event.timestamp,
+      ...(traceId && { traceId }),
     };
     await this.valkeyPubSub.publish(`user:${event.userId}:transfers`, JSON.stringify(transferMsg));
   }
 
   private async handleWithdrawalCompleted(event: WithdrawalCompletedEvent): Promise<void> {
+    const traceId = this.getActiveTraceId();
     const transferMsg: WsUserTransferUpdateMessage = {
       channel: 'user:transfers',
       transferId: event.withdrawalId,
@@ -242,11 +266,13 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
       status: WithdrawalStatus.COMPLETED,
       txHash: event.txHash,
       timestamp: event.timestamp,
+      ...(traceId && { traceId }),
     };
     await this.valkeyPubSub.publish(`user:${event.userId}:transfers`, JSON.stringify(transferMsg));
   }
 
   private async handleWithdrawalFailed(event: WithdrawalFailedEvent): Promise<void> {
+    const traceId = this.getActiveTraceId();
     const transferMsg: WsUserTransferUpdateMessage = {
       channel: 'user:transfers',
       transferId: event.withdrawalId,
@@ -256,6 +282,7 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
       status: WithdrawalStatus.FAILED,
       txHash: event.txHash,
       timestamp: event.timestamp,
+      ...(traceId && { traceId }),
     };
     await this.valkeyPubSub.publish(`user:${event.userId}:transfers`, JSON.stringify(transferMsg));
   }

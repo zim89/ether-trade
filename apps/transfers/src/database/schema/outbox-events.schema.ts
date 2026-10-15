@@ -36,16 +36,18 @@ export const outboxEvents = pgTable(
       .notNull(),
     retryCount: integer('retry_count').default(0).notNull(),
     lastError: text('last_error'),
+    traceparent: varchar('traceparent', { length: 128 }),
+    tracestate: text('tracestate'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
   },
   (table) => [
     index('idx_transfers_outbox_pending')
       .on(table.createdAt)
-      .where(sql`${table.status} = ${OutboxStatus.PENDING}`),
+      .where(sql`"outbox_events"."status" = 'PENDING'`),
     index('idx_transfers_outbox_retention')
       .on(table.createdAt)
-      .where(sql`${table.status} = ${OutboxStatus.PUBLISHED}`),
+      .where(sql`"outbox_events"."status" = 'PUBLISHED'`),
   ],
 );
 

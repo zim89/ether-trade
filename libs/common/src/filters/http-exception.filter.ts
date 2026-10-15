@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
 import type { Request, Response } from 'express';
 import { TimeoutError } from 'rxjs';
 import { COMMON_ERROR_CODES, COMMON_ERRORS } from '../constants';
@@ -133,6 +134,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
     };
     if (errorCode) {
       responseBody.errorCode = errorCode;
+    }
+
+    const currentSpan = trace.getActiveSpan();
+    if (currentSpan) {
+      if (exception instanceof Error) {
+        currentSpan.recordException(exception);
+      } else {
+        currentSpan.recordException(
+          new Error(Array.isArray(message) ? message.join('; ') : message),
+        );
+      }
+      currentSpan.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: Array.isArray(message) ? message.join('; ') : message,
+      });
     }
 
     // Log with appropriate severity level

@@ -1,6 +1,7 @@
 import { status as GrpcStatus } from '@grpc/grpc-js';
 import { Catch, RpcExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { Observable, throwError } from 'rxjs';
 import { extractErrorCode, parseErrorDetails, serializeErrorDetails } from '../utils';
 
@@ -43,22 +44,14 @@ export class GrpcExceptionFilter implements RpcExceptionFilter<unknown> {
           : undefined;
         const normalizedErrorCode = extractErrorCode(rpcError) ?? fromDetails;
 
-        return throwError(() => ({
-          code: normalizedCode,
-          message: Array.isArray(normalizedMessage)
-            ? normalizedMessage.join('; ')
-            : normalizedMessage,
-          details: serializeErrorDetails(normalizedMessage, normalizedErrorCode),
-        }));
+        code = normalizedCode;
+        message = normalizedMessage;
+        errorCode = normalizedErrorCode;
+      } else {
+        code = GrpcStatus.INTERNAL;
+        message = String(error);
       }
-      return throwError(() => ({
-        code: GrpcStatus.INTERNAL,
-        message: String(error),
-        details: serializeErrorDetails(String(error)),
-      }));
-    }
-
-    if (exception instanceof HttpException) {
+    } else if (exception instanceof HttpException) {
       const httpStatus: HttpStatus = exception.getStatus();
       const response = exception.getResponse();
 
@@ -98,6 +91,21 @@ export class GrpcExceptionFilter implements RpcExceptionFilter<unknown> {
     } else if (exception instanceof Error) {
       message = exception.message;
       this.logger.error(`Unhandled Exception: ${exception.message}`, exception.stack);
+    }
+
+    const currentSpan = trace.getActiveSpan();
+    if (currentSpan) {
+      if (exception instanceof Error) {
+        currentSpan.recordException(exception);
+      } else {
+        currentSpan.recordException(
+          new Error(Array.isArray(message) ? message.join('; ') : message),
+        );
+      }
+      currentSpan.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: Array.isArray(message) ? message.join('; ') : message,
+      });
     }
 
     return throwError(() => ({
