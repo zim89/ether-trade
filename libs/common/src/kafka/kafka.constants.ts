@@ -50,6 +50,7 @@ export const KAFKA_TOPIC_EVENTS = {
 export const KAFKA_CONSUMER_GROUPS = {
   accountsSettlement: 'accounts-settlement-group',
   transfersAudit: 'transfers-audit-group',
+  apiGatewayWs: 'api-gateway-ws-group',
 } as const;
 
 /**

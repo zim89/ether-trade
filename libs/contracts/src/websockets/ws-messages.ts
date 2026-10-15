@@ -61,7 +61,7 @@ export interface WsTradeMessage {
   readonly symbol: string;
   readonly price: string;
   readonly quantity: string;
-  readonly side: OrderSide;
+  readonly side?: OrderSide;
   readonly timestamp: number;
 }
 
@@ -80,7 +80,7 @@ export interface WsUserOrderUpdateMessage {
   readonly channel: 'user:orders';
   readonly orderId: string;
   readonly symbol: string;
-  readonly side: OrderSide;
+  readonly side?: OrderSide;
   readonly status: OrderStatus;
   readonly filledQuantity: string;
   readonly remainingQuantity: string;
