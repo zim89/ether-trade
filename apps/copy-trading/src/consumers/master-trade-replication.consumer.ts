@@ -11,6 +11,7 @@ import {
   KAFKA_TOPIC_EVENTS,
 } from '@app/common/kafka/kafka.constants';
 import { KafkaBatchConsumerPayload } from '@app/common/kafka/kafka.types';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { executeInBatches } from '@app/common/utils';
 import {
   type DomainEventEnvelope,
@@ -61,6 +62,7 @@ export class MasterTradeReplicationConsumer extends BaseKafkaConsumer implements
     private readonly distributedLockService: DistributedLockService,
     @Inject(PROTO_SERVICES.orders)
     private readonly ordersServiceClient: OrdersServiceClient,
+    private readonly telemetryMetrics: TelemetryMetricsService,
   ) {
     const appEnv = (
       configService.get<string>(SHARED_ENV_KEYS.appEnv) || SHARED_ENV_DEFAULTS.appEnv
@@ -105,6 +107,10 @@ export class MasterTradeReplicationConsumer extends BaseKafkaConsumer implements
       // Instant drop without any DB I/O
       return;
     }
+
+    this.telemetryMetrics.copyTradeEventsReceivedTotal?.add(1, {
+      pair: trade.symbol,
+    });
 
     // Deduplication check via processed_events table
     const alreadyProcessed = await this.processedEventsRepository.isProcessed(envelope.eventId);
@@ -258,6 +264,7 @@ export class MasterTradeReplicationConsumer extends BaseKafkaConsumer implements
       const idempotencyKey = `copy:${task.tradeId}:${subscriber.followerUserId}`;
 
       // 5. Place order on exchange via OrdersService.CreateOrder
+      const executionStart = process.hrtime.bigint();
       try {
         const orderResponse = await firstValueFrom(
           this.ordersServiceClient.createOrder({
@@ -270,6 +277,23 @@ export class MasterTradeReplicationConsumer extends BaseKafkaConsumer implements
             idempotencyKey,
           }),
         );
+
+        const executionDurationMs = Number(process.hrtime.bigint() - executionStart) / 1_000_000;
+        this.telemetryMetrics.copyTradeExecutionLatencyMs?.record(executionDurationMs, {
+          pair: task.pair,
+          side: task.side,
+        });
+
+        // Compute slippage in basis points: abs((protectedPrice - masterPrice) / masterPrice) * 10000
+        const mPrice = Number(task.masterPrice);
+        const pPrice = Number(protectedPrice);
+        if (mPrice > 0) {
+          const slippageBps = Math.abs((pPrice - mPrice) / mPrice) * 10000;
+          this.telemetryMetrics.copyTradeSlippageBps?.record(slippageBps, {
+            pair: task.pair,
+            side: task.side,
+          });
+        }
 
         const followerOrderId = orderResponse.order?.orderId ?? null;
 

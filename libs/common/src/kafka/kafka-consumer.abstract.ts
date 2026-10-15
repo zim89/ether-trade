@@ -1,6 +1,6 @@
 import { Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { context, propagation, trace, SpanKind, SpanStatusCode } from '@opentelemetry/api';
+import { context, metrics, propagation, trace, SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { Consumer, EachBatchPayload, Kafka } from 'kafkajs';
 import { CONFIG_NAMESPACES } from '../constants';
 import { KafkaProducerService } from './kafka-producer.service';
@@ -184,6 +184,19 @@ export abstract class BaseKafkaConsumer implements OnModuleInit, OnApplicationSh
           span.setStatus({ code: SpanStatusCode.OK });
           batchPayload.resolveOffset(message.offset);
           await batchPayload.commitOffsetsIfNecessary();
+
+          // Record Consumer Lag (highWatermark - messageOffset)
+          const highWatermark = BigInt(batch.highWatermark || '0');
+          const currentOffset = BigInt(message.offset);
+          const lag = Number(highWatermark > currentOffset ? highWatermark - currentOffset : 0n);
+          metrics
+            .getMeter('ether-trade-metrics')
+            .createHistogram('kafka_consumer_lag')
+            .record(lag, {
+              topic: batch.topic,
+              partition: batch.partition,
+              consumer_group: this.options.groupId,
+            });
         } catch (error: unknown) {
           if (error instanceof Error) {
             span.recordException(error);

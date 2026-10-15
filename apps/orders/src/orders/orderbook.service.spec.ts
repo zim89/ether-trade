@@ -93,6 +93,7 @@ describe('OrderbookService', () => {
 
     mockRedisService = {
       getClient: jest.fn().mockResolvedValue(mockRedisClient as any),
+      execute: jest.fn((_cmd: string, fn: (client: any) => Promise<any>) => fn(mockRedisClient)),
     };
 
     service = new OrderbookService(mockRedisService as RedisService);

@@ -60,6 +60,18 @@ export class OutboxRepository {
   }
 
   /**
+   * Fetches the count of pending unprocessed events.
+   */
+  async countPending(tx?: DrizzleDB): Promise<number> {
+    const client = tx ?? this.db;
+    const [result] = await client
+      .select({ count: sql<number>`count(*)::int` })
+      .from(outboxEvents)
+      .where(eq(outboxEvents.status, OutboxStatus.PENDING));
+    return result?.count ?? 0;
+  }
+
+  /**
    * Atomically marks specified events as PUBLISHED.
    */
   async markAsPublished(ids: string[], tx?: DrizzleDB): Promise<void> {

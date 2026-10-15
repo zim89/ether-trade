@@ -1,0 +1,66 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 20
+
+  batch:
+    send_batch_size: 1024
+    timeout: 1s
+    send_batch_max_size: 2048
+
+  tail_sampling:
+    decision_wait: 1s
+    num_traces: 10000
+    expected_new_traces_per_sec: 2000
+    policies:
+      # Always sample traces with errors
+      - name: errors-policy
+        type: status_code
+        status_code:
+          status_codes:
+            - ERROR
+
+      # Always sample slow traces (>200ms latency)
+      - name: latency-policy
+        type: latency
+        latency:
+          threshold_ms: 200
+
+      # Sample 5% of routine traces
+      - name: probabilistic-routine-policy
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 5.0
+
+exporters:
+  otlp:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: ethertrade
+    send_timestamps: true
+    enable_open_metrics: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, tail_sampling, batch]
+      exporters: [otlp]
+
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]

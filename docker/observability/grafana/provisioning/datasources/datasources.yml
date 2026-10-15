@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: jaeger-datasource
+
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    uid: jaeger-datasource
+    url: http://jaeger:16686

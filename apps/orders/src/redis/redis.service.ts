@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { GlideClient } from '@valkey/valkey-glide';
 import { COMMON_ERRORS, COMMON_LOGS, CONFIG_NAMESPACES } from '@app/common/constants';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { OrdersAppConfig } from '../config';
 
 @Injectable()
@@ -9,7 +10,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: GlideClient | null = null;
   private readonly logger = new Logger(RedisService.name);
 
-  constructor(private readonly configService: ConfigService<OrdersAppConfig, true>) {}
+  constructor(
+    private readonly configService: ConfigService<OrdersAppConfig, true>,
+    private readonly telemetryMetrics: TelemetryMetricsService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     await this.initClient();
@@ -42,6 +46,22 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       throw new Error(COMMON_ERRORS.redis.connectionFailed);
     }
     return this.client;
+  }
+
+  /**
+   * Executes a Valkey command measuring execution latency in valkey_command_duration_seconds.
+   */
+  async execute<T>(commandName: string, fn: (client: GlideClient) => Promise<T>): Promise<T> {
+    const client = await this.getClient();
+    const start = process.hrtime.bigint();
+    try {
+      return await fn(client);
+    } finally {
+      const durationSec = Number(process.hrtime.bigint() - start) / 1_000_000_000;
+      this.telemetryMetrics.valkeyCommandDurationSeconds?.record(durationSec, {
+        command: commandName,
+      });
+    }
   }
 
   onModuleDestroy(): void {

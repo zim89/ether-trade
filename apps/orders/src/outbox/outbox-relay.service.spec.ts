@@ -7,6 +7,7 @@ import {
   KAFKA_DOMAINS,
   KAFKA_HEADERS,
 } from '@app/common/kafka/kafka.constants';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { OutboxAggregateType, OutboxStatus } from '@app/contracts';
 import type { DrizzleDB } from '../database/database.module';
 import { OutboxRelayService } from './outbox-relay.service';
@@ -53,7 +54,17 @@ describe('OutboxRelayService (Unit)', () => {
       transaction: jest.fn((callback: (tx: DrizzleDB) => Promise<unknown>) => callback(mockDb)),
     } as unknown as DrizzleDB;
 
-    service = new OutboxRelayService(outboxRepository, kafkaProducer, configService, mockDb);
+    const mockTelemetryMetrics = {
+      outboxUnprocessedRecordsCount: { add: jest.fn() },
+    } as unknown as TelemetryMetricsService;
+
+    service = new OutboxRelayService(
+      outboxRepository,
+      kafkaProducer,
+      configService,
+      mockDb,
+      mockTelemetryMetrics,
+    );
   });
 
   afterEach(async () => {

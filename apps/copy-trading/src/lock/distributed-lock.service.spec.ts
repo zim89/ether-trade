@@ -1,4 +1,5 @@
 import { TimeUnit } from '@valkey/valkey-glide';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { RedisService } from '../redis/redis.service';
 import { DistributedLockService } from './distributed-lock.service';
 
@@ -17,7 +18,11 @@ describe('DistributedLockService (0 I/O Unit Tests)', () => {
       getClient: jest.fn().mockResolvedValue(mockRedisClient),
     } as any;
 
-    lockService = new DistributedLockService(mockRedisService);
+    const mockTelemetryMetrics = {
+      lockAcquisitionDurationMs: { record: jest.fn() },
+    } as unknown as TelemetryMetricsService;
+
+    lockService = new DistributedLockService(mockRedisService, mockTelemetryMetrics);
   });
 
   describe('acquireLock', () => {
