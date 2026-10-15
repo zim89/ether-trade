@@ -8,6 +8,7 @@ export const LOGGER_CONTEXTS = {
   ordersBootstrap: 'OrdersBootstrap',
   identityBootstrap: 'IdentityBootstrap',
   apiGatewayBootstrap: 'ApiGatewayBootstrap',
+  copyTradingBootstrap: 'CopyTradingBootstrap',
   database: 'Database',
   auth: 'Auth',
   balances: 'Balances',
@@ -20,6 +21,7 @@ export const LOGGER_CONTEXTS = {
  */
 export const COMMON_LOGS = {
   bootstrap: {
+    serviceStarting: (serviceName: string) => `🚀 ${serviceName} service is starting...`,
     grpcServiceRunning: (serviceName: string, url: string) =>
       `🚀 ${serviceName} gRPC Microservice is running on ${url}`,
     httpGatewayRunning: (url: string, swaggerUrl: string) =>
