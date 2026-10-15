@@ -45,7 +45,7 @@
     "test:unit": "jest --config ./jest.unit.json --passWithNoTests",
     "test:integration": "jest --config ./jest.integration.json --runInBand --passWithNoTests",
     "test:e2e": "jest --config ./jest.e2e.json --runInBand --passWithNoTests",
-    "test:contracts": "buf breaking libs/contracts --against '.git#branch=main,subdir=libs/contracts'",
+    "test:contracts": "buf breaking libs/contracts --against '.git#branch=origin/main,subdir=libs/contracts'",
     "test:all": "pnpm test:unit && pnpm test:integration",
     "test:watch": "jest --config ./jest.unit.json --watch",
     "test:cov": "jest --config ./jest.unit.json --coverage",
