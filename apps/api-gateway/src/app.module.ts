@@ -1,5 +1,6 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { TelemetryModule } from '@app/common/telemetry';
 import { AuthModule } from './auth';
 import { BalancesModule } from './balances';
 import { ClientsModule } from './clients';
@@ -13,6 +14,7 @@ import { WebSocketsModule } from './websockets';
 
 @Module({
   imports: [
+    TelemetryModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [gatewayConfig],

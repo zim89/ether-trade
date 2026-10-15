@@ -1,5 +1,6 @@
 import { Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { context, metrics, propagation, trace, SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { Consumer, EachBatchPayload, Kafka } from 'kafkajs';
 import { CONFIG_NAMESPACES } from '../constants';
 import { KafkaProducerService } from './kafka-producer.service';
@@ -147,36 +148,94 @@ export abstract class BaseKafkaConsumer implements OnModuleInit, OnApplicationSh
         },
       };
 
-      try {
-        await this.handleMessage(payload);
-        batchPayload.resolveOffset(message.offset);
-        await batchPayload.commitOffsetsIfNecessary();
-      } catch (error: unknown) {
-        const isPoisonPill = this.isPoisonPillError(error);
+      // OpenTelemetry Context Propagation & Consumer Span
+      const carrier: Record<string, string> = { ...headers };
+      const extractedContext = propagation.extract(context.active(), carrier);
+      const spanContext = trace.getSpanContext(extractedContext);
 
-        if (isPoisonPill) {
-          this.logger.error(
-            `Poison pill detected at offset ${message.offset} on topic ${batch.topic}. Routing to DLQ.`,
-            error instanceof Error ? error.stack : this.stringifyUnknownError(error),
-          );
-          await this.routeToDlq(batch.topic, payload, error);
+      const spanLinks =
+        spanContext && trace.isSpanContextValid(spanContext) ? [{ context: spanContext }] : [];
+
+      const tracer = trace.getTracer('ether-trade-kafka-consumer');
+      const spanName = `${batch.topic} process`;
+
+      const span = tracer.startSpan(
+        spanName,
+        {
+          kind: SpanKind.CONSUMER,
+          links: spanLinks,
+          attributes: {
+            'messaging.system': 'kafka',
+            'messaging.destination': batch.topic,
+            'messaging.destination_kind': 'topic',
+            'messaging.kafka.partition': batch.partition,
+            'messaging.kafka.message_offset': message.offset,
+            'messaging.kafka.consumer_group': this.options.groupId,
+          },
+        },
+        extractedContext,
+      );
+
+      const consumerContext = trace.setSpan(extractedContext, span);
+
+      await context.with(consumerContext, async () => {
+        try {
+          await this.handleMessage(payload);
+          span.setStatus({ code: SpanStatusCode.OK });
           batchPayload.resolveOffset(message.offset);
           await batchPayload.commitOffsetsIfNecessary();
-        } else {
-          this.logger.warn(
-            `Transient error processing message at offset ${message.offset} on topic ${batch.topic}. Pausing consumer and propagating error.`,
-            error instanceof Error ? error.message : this.stringifyUnknownError(error),
-          );
-          // Pause consumer to avoid continuous tight loop hammering
-          this.consumer.pause([{ topic: batch.topic, partitions: [batch.partition] }]);
-          setTimeout(() => {
-            if (this.isRunning) {
-              this.consumer.resume([{ topic: batch.topic, partitions: [batch.partition] }]);
-            }
-          }, 5000);
-          throw error;
+
+          // Record Consumer Lag (highWatermark - messageOffset)
+          const highWatermark = BigInt(batch.highWatermark || '0');
+          const currentOffset = BigInt(message.offset);
+          const lag = Number(highWatermark > currentOffset ? highWatermark - currentOffset : 0n);
+          metrics
+            .getMeter('ether-trade-metrics')
+            .createHistogram('kafka_consumer_lag')
+            .record(lag, {
+              topic: batch.topic,
+              partition: batch.partition,
+              consumer_group: this.options.groupId,
+            });
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            span.recordException(error);
+          } else {
+            span.recordException(new Error(this.stringifyUnknownError(error)));
+          }
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: error instanceof Error ? error.message : this.stringifyUnknownError(error),
+          });
+
+          const isPoisonPill = this.isPoisonPillError(error);
+
+          if (isPoisonPill) {
+            this.logger.error(
+              `Poison pill detected at offset ${message.offset} on topic ${batch.topic}. Routing to DLQ.`,
+              error instanceof Error ? error.stack : this.stringifyUnknownError(error),
+            );
+            await this.routeToDlq(batch.topic, payload, error);
+            batchPayload.resolveOffset(message.offset);
+            await batchPayload.commitOffsetsIfNecessary();
+          } else {
+            this.logger.warn(
+              `Transient error processing message at offset ${message.offset} on topic ${batch.topic}. Pausing consumer and propagating error.`,
+              error instanceof Error ? error.message : this.stringifyUnknownError(error),
+            );
+            // Pause consumer to avoid continuous tight loop hammering
+            this.consumer.pause([{ topic: batch.topic, partitions: [batch.partition] }]);
+            setTimeout(() => {
+              if (this.isRunning) {
+                this.consumer.resume([{ topic: batch.topic, partitions: [batch.partition] }]);
+              }
+            }, 5000);
+            throw error;
+          }
+        } finally {
+          span.end();
         }
-      }
+      });
     }
   };
 

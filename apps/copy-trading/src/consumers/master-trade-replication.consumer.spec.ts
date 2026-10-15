@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { KafkaProducerService } from '@app/common/kafka/kafka-producer.service';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { type OrdersServiceClient } from '@app/contracts';
 import { CopyRatioCalculator } from '../calculator/copy-ratio.calculator';
 import { CopyOrderStatus, CopyOrderSkipReason } from '../common/constants';
@@ -72,6 +73,12 @@ describe('MasterTradeReplicationConsumer (Unit Tests)', () => {
       ),
     };
 
+    const mockTelemetryMetrics = {
+      copyTradeEventsReceivedTotal: { add: jest.fn() },
+      copyTradeExecutionLatencyMs: { record: jest.fn() },
+      copyTradeSlippageBps: { record: jest.fn() },
+    } as unknown as TelemetryMetricsService;
+
     consumer = new MasterTradeReplicationConsumer(
       mockConfigService as ConfigService,
       mockProducerService as KafkaProducerService,
@@ -83,6 +90,7 @@ describe('MasterTradeReplicationConsumer (Unit Tests)', () => {
       mockRiskGuard as RiskGuardService,
       mockLockService as DistributedLockService,
       mockOrdersClient as OrdersServiceClient,
+      mockTelemetryMetrics,
     );
   });
 

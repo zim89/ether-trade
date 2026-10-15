@@ -15,6 +15,13 @@
       "when": 1791876143228,
       "tag": "0001_mighty_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792069067021,
+      "tag": "0002_dusty_venom",
+      "breakpoints": true
     }
   ]
 }

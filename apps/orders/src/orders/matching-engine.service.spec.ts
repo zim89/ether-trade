@@ -1,3 +1,4 @@
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { OrderSide, OrderStatus, OrderType } from '@app/contracts';
 import type { Order } from '../database/schema/orders.schema';
 import { MatchingEngineService } from './matching-engine.service';
@@ -51,7 +52,11 @@ describe('MatchingEngineService', () => {
       addOrder: addOrderMock,
     } as unknown as OrderbookService;
 
-    service = new MatchingEngineService(mockOrdersRepo, mockOrderbookService);
+    const mockTelemetryMetrics = {
+      matchingEngineDurationMs: { record: jest.fn() },
+    } as unknown as TelemetryMetricsService;
+
+    service = new MatchingEngineService(mockOrdersRepo, mockOrderbookService, mockTelemetryMetrics);
   });
 
   it('should fully match taker order when opposing maker order has equal amount and crossing price', async () => {

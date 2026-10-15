@@ -6,6 +6,7 @@ import BigNumber from 'bignumber.js';
 import { firstValueFrom } from 'rxjs';
 import { v7 as uuidv7 } from 'uuid';
 import { Currency } from '@app/common/constants';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import type {
   AccountsServiceClient,
   OrderCancelledEvent,
@@ -56,6 +57,7 @@ export class OrdersService implements OnModuleInit {
     private readonly accountsClient: AccountsServiceClient,
     @Inject(DRIZZLE_CLIENT)
     private readonly db: DrizzleDB,
+    private readonly telemetryMetrics: TelemetryMetricsService,
   ) {}
 
   /**
@@ -89,6 +91,7 @@ export class OrdersService implements OnModuleInit {
    * and Saga-Lite rollback on database failures.
    */
   async createOrder(request: CreateOrderRequest): Promise<OrderItem> {
+    const startTime = process.hrtime.bigint();
     const { userId, pair, side, type, price, amount, idempotencyKey } = request;
 
     this.validateCreateOrderRequest(request);
@@ -380,6 +383,11 @@ export class OrdersService implements OnModuleInit {
 
     // 5. Complete idempotency record
     await this.idempotencyRepository.completeRecord(idempotencyRecord.id, orderItem);
+
+    // Record Telemetry Metrics
+    const latencyMs = Number(process.hrtime.bigint() - startTime) / 1_000_000;
+    this.telemetryMetrics.ordersCreatedTotal?.add(1, { pair, side, type });
+    this.telemetryMetrics.orderPlacementLatencyMs?.record(latencyMs, { pair, side, type });
 
     this.logger.log(ORDERS_LOGS.orderCreated(finalOrder.id, userId, pair, side));
     return orderItem;

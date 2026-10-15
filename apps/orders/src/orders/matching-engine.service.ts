@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import BigNumber from 'bignumber.js';
 import { v7 as uuidv7 } from 'uuid';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { OrderSide, OrderStatus } from '@app/contracts';
 import type { DrizzleDB } from '../database/database.module';
 import type { Order } from '../database/schema/orders.schema';
@@ -16,6 +17,7 @@ export class MatchingEngineService {
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private readonly orderbookService: OrderbookService,
+    private readonly telemetryMetrics: TelemetryMetricsService,
   ) {}
 
   /**
@@ -23,6 +25,19 @@ export class MatchingEngineService {
    * Runs database updates within the provided transaction context (Unit of Work).
    */
   async match(takerOrder: Order, tx?: DrizzleDB): Promise<MatchResult> {
+    const matchStart = process.hrtime.bigint();
+    try {
+      return await this.executeMatch(takerOrder, tx);
+    } finally {
+      const durationMs = Number(process.hrtime.bigint() - matchStart) / 1_000_000;
+      this.telemetryMetrics.matchingEngineDurationMs?.record(durationMs, {
+        pair: takerOrder.pair,
+        side: takerOrder.side,
+      });
+    }
+  }
+
+  private async executeMatch(takerOrder: Order, tx?: DrizzleDB): Promise<MatchResult> {
     const opposingSide =
       (takerOrder.side as OrderSide) === OrderSide.BUY ? OrderSide.SELL : OrderSide.BUY;
     const opposingOrders = await this.orderbookService.getBestOpposingOrders(

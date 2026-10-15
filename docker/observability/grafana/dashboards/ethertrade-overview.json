@@ -1,0 +1,264 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Trading Engine & Orders Overview",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisCenteredZero": false, "drawStyle": "line", "lineInterpolation": "smooth" },
+          "unit": "reqps"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "id": 1,
+      "title": "Orders Created Rate (RPS)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(ethertrade_orders_created_total[1m])) by (pair, side)",
+          "legendFormat": "{{pair}} {{side}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "id": 2,
+      "title": "Order Placement Latency (p50, p95, p99)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(ethertrade_order_placement_latency_ms_bucket[1m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ethertrade_order_placement_latency_ms_bucket[1m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ethertrade_order_placement_latency_ms_bucket[1m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "id": 3,
+      "title": "Matching Engine Duration (p95, p99)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ethertrade_matching_engine_duration_ms_bucket[1m])) by (le, pair))",
+          "legendFormat": "p95 {{pair}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ethertrade_matching_engine_duration_ms_bucket[1m])) by (le, pair))",
+          "legendFormat": "p99 {{pair}}"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 200,
+      "title": "Storage, In-Memory Engine & Lock Performance",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "id": 4,
+      "title": "Valkey GLIDE Command Duration (p95)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ethertrade_valkey_command_duration_seconds_bucket[1m])) by (le, command))",
+          "legendFormat": "{{command}} p95"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "id": 5,
+      "title": "Distributed Lock Acquisition Latency (p95)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ethertrade_lock_acquisition_duration_ms_bucket[1m])) by (le, status))",
+          "legendFormat": "Lock {{status}} p95"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "id": 300,
+      "title": "Kafka Queues & Transactional Outbox",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "id": 6,
+      "title": "Kafka Consumer Lag (p95)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ethertrade_kafka_consumer_lag_bucket[1m])) by (le, topic, consumer_group))",
+          "legendFormat": "{{consumer_group}} - {{topic}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "id": 7,
+      "title": "Pending Outbox Records Count",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "ethertrade_outbox_unprocessed_records_count",
+          "legendFormat": "Pending Outbox Records"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "id": 400,
+      "title": "Copy Trading & Real-time WebSockets",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 28 },
+      "id": 8,
+      "title": "Copy Trade Execution Latency (p95)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ethertrade_copy_trade_execution_latency_ms_bucket[1m])) by (le))",
+          "legendFormat": "Copy Latency p95"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 28 },
+      "id": 9,
+      "title": "Copy Trade Slippage (bps)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ethertrade_copy_trade_slippage_bps_bucket[1m])) by (le, direction))",
+          "legendFormat": "{{direction}} slippage p95"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 28 },
+      "id": 10,
+      "title": "Active WebSocket Connections",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(ethertrade_ws_active_connections)",
+          "legendFormat": "Active Connections"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["ether-trade", "observability", "trading"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Ether-Trade Engine Overview",
+  "uid": "ethertrade-overview"
+}

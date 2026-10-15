@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WebSocket } from 'ws';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 
 /**
  * Maximum outbound buffer size (1MB) before terminating a slow consumer connection.
@@ -21,6 +22,8 @@ export class RoomManagerService {
   private readonly logger = new Logger(RoomManagerService.name);
   private readonly rooms = new Map<string, Set<WebSocket>>();
   private readonly clientRooms = new Map<WebSocket, Set<string>>();
+
+  constructor(private readonly telemetryMetrics: TelemetryMetricsService) {}
 
   /**
    * Joins a client WebSocket to a specific room.
@@ -102,6 +105,7 @@ export class RoomManagerService {
           continue;
         }
         ws.send(payload);
+        this.telemetryMetrics.wsMessagesBroadcastRate?.add(1, { room });
       }
     }
   }

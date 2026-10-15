@@ -9,6 +9,7 @@ import {
   KAFKA_HEADERS,
 } from '@app/common/kafka/kafka.constants';
 import { KafkaProducerRecord } from '@app/common/kafka/kafka.types';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { OutboxAggregateType } from '@app/contracts';
 import { DRIZZLE_CLIENT } from '../database/database.constants';
 import type { DrizzleDB } from '../database/database.module';
@@ -33,6 +34,7 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
     private readonly configService: ConfigService,
     @Inject(DRIZZLE_CLIENT)
     private readonly db: DrizzleDB,
+    private readonly telemetryMetrics: TelemetryMetricsService,
   ) {
     this.appEnv = (
       this.configService.get<string>(SHARED_ENV_KEYS.appEnv) || SHARED_ENV_DEFAULTS.appEnv
@@ -106,15 +108,23 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
             : KAFKA_DOMAINS.matching;
         const topic = getKafkaTopicName(this.appEnv, domain, event.eventType);
 
+        const headers: Record<string, string> = {
+          [KAFKA_HEADERS.originService]: KAFKA_CLIENT_IDS.orders,
+          [KAFKA_HEADERS.eventId]: event.id,
+          [KAFKA_HEADERS.aggregateId]: event.aggregateId,
+        };
+        if (event.traceparent) {
+          headers[KAFKA_HEADERS.traceparent] = event.traceparent;
+        }
+        if (event.tracestate) {
+          headers[KAFKA_HEADERS.tracestate] = event.tracestate;
+        }
+
         records.push({
           topic,
           key: event.partitionKey,
           value: event.payload,
-          headers: {
-            [KAFKA_HEADERS.originService]: KAFKA_CLIENT_IDS.orders,
-            [KAFKA_HEADERS.eventId]: event.id,
-            [KAFKA_HEADERS.aggregateId]: event.aggregateId,
-          },
+          headers,
         });
 
         publishedIds.push(event.id);
@@ -123,6 +133,9 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
       try {
         await this.kafkaProducer.sendBatch(records);
         await this.outboxRepository.markAsPublished(publishedIds, tx);
+        this.telemetryMetrics.outboxUnprocessedRecordsCount?.add(-records.length, {
+          service: KAFKA_CLIENT_IDS.orders,
+        });
         this.logger.log(`Outbox Relay published ${records.length} events to Kafka`);
         return records.length;
       } catch (publishErr: unknown) {

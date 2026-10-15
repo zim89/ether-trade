@@ -88,6 +88,74 @@ services:
       timeout: 5s
       retries: 5
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    container_name: ether-trade-otel-collector
+    restart: unless-stopped
+    profiles:
+      - obs
+    command: ['--config=/etc/otelcol-contrib/config.yaml']
+    volumes:
+      - ./observability/otel-collector-config.yml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - '4317:4317' # OTLP gRPC receiver (Host access for microservices)
+      - '4318:4318' # OTLP HTTP receiver
+      - '8889:8889' # Prometheus metrics exporter endpoint
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: ether-trade-jaeger
+    restart: unless-stopped
+    profiles:
+      - obs
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - '16686:16686' # Jaeger Web UI
+    # Note: internal OTLP port 4317 is accessible via internal network jaeger:4317 without host conflict
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: ether-trade-prometheus
+    restart: unless-stopped
+    profiles:
+      - obs
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+      - '--enable-feature=exemplar-storage'
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ether_trade_prometheus_data:/prometheus
+    ports:
+      - '9090:9090'
+    depends_on:
+      - otel-collector
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: ether-trade-grafana
+    restart: unless-stopped
+    profiles:
+      - obs
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - '3100:3000' # Map to 3100 on host to keep 3000 free for et-client
+    volumes:
+      - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ether_trade_grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - jaeger
+
 volumes:
   ether_trade_postgres_data:
     name: ether_trade_postgres_data
@@ -95,3 +163,7 @@ volumes:
     name: ether_trade_redis_data
   ether_trade_kafka_data:
     name: ether_trade_kafka_data
+  ether_trade_prometheus_data:
+    name: ether_trade_prometheus_data
+  ether_trade_grafana_data:
+    name: ether_trade_grafana_data

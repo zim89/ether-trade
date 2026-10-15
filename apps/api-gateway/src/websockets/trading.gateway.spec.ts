@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { WebSocket } from 'ws';
 import { UserRole } from '@app/common/constants';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { WsClientAction, WS_CHANNELS } from '@app/contracts';
 import { OrdersService } from '../orders/orders.service';
 import { RoomManagerService } from './room-manager.service';
@@ -65,12 +66,17 @@ describe('TradingGateway', () => {
       get: jest.fn().mockReturnValue({ jwtSecret }),
     } as unknown as ConfigService;
 
+    const mockTelemetryMetrics = {
+      wsActiveConnections: { add: jest.fn() },
+    } as unknown as TelemetryMetricsService;
+
     gateway = new TradingGateway(
       roomManager,
       valkeyPubSub,
       ordersService,
       configService,
       jwtService,
+      mockTelemetryMetrics,
     );
   });
 

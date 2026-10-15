@@ -15,7 +15,6 @@ export class OrderbookService {
    * Adds an order into the Valkey/Redis orderbook and caches its details hash.
    */
   async addOrder(entry: OrderbookEntry): Promise<void> {
-    const client = await this.redisService.getClient();
     const zsetKey =
       entry.side === OrderSide.BUY
         ? ORDER_REDIS_KEYS.orderbookBids(entry.pair)
@@ -24,42 +23,46 @@ export class OrderbookService {
 
     const priceNum = new BigNumber(entry.price).toNumber();
 
-    await client.zadd(zsetKey, { [entry.orderId]: priceNum });
-    await client.hset(detailsKey, {
-      orderId: entry.orderId,
-      userId: entry.userId,
-      pair: entry.pair,
-      side: entry.side,
-      type: entry.type,
-      price: entry.price,
-      amount: entry.amount,
-      remainingAmount: entry.remainingAmount,
-      createdAt: entry.createdAt.toString(),
-    });
+    await this.redisService.execute('zadd', (client) =>
+      client.zadd(zsetKey, { [entry.orderId]: priceNum }),
+    );
+    await this.redisService.execute('hset', (client) =>
+      client.hset(detailsKey, {
+        orderId: entry.orderId,
+        userId: entry.userId,
+        pair: entry.pair,
+        side: entry.side,
+        type: entry.type,
+        price: entry.price,
+        amount: entry.amount,
+        remainingAmount: entry.remainingAmount,
+        createdAt: entry.createdAt.toString(),
+      }),
+    );
   }
 
   /**
    * Updates the remaining amount of an order in the Redis hash.
    */
   async updateRemainingAmount(orderId: string, remainingAmount: string): Promise<void> {
-    const client = await this.redisService.getClient();
     const detailsKey = ORDER_REDIS_KEYS.orderDetails(orderId);
-    await client.hset(detailsKey, { remainingAmount });
+    await this.redisService.execute('hset', (client) =>
+      client.hset(detailsKey, { remainingAmount }),
+    );
   }
 
   /**
    * Removes an order from the orderbook ZSET and deletes its details hash.
    */
   async removeOrder(orderId: string, pair: string, side: OrderSide): Promise<void> {
-    const client = await this.redisService.getClient();
     const zsetKey =
       side === OrderSide.BUY
         ? ORDER_REDIS_KEYS.orderbookBids(pair)
         : ORDER_REDIS_KEYS.orderbookAsks(pair);
     const detailsKey = ORDER_REDIS_KEYS.orderDetails(orderId);
 
-    await client.zrem(zsetKey, [orderId]);
-    await client.del([detailsKey]);
+    await this.redisService.execute('zrem', (client) => client.zrem(zsetKey, [orderId]));
+    await this.redisService.execute('del', (client) => client.del([detailsKey]));
   }
 
   /**

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DEFAULT_ENV_FILES } from '@app/common/constants';
+import { TelemetryModule } from '@app/common/telemetry';
 import { AuthModule } from './auth';
 import { appConfig, authConfig, databaseConfig, redisConfig, validateEnvironment } from './config';
 import { DatabaseModule } from './database/database.module';
@@ -9,6 +10,7 @@ import { UsersModule } from './users';
 
 @Module({
   imports: [
+    TelemetryModule,
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnvironment,

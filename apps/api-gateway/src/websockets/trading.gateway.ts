@@ -14,6 +14,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, WebSocket } from 'ws';
 import { CONFIG_NAMESPACES } from '@app/common/constants';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import {
   isValidChannel,
   WS_CHANNELS,
@@ -55,6 +56,7 @@ export class TradingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     private readonly ordersService: OrdersService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
+    private readonly telemetryMetrics: TelemetryMetricsService,
   ) {
     const gatewayCfg = this.configService.get<GatewayConfig>(CONFIG_NAMESPACES.gateway);
     this.jwtSecret = gatewayCfg?.jwtSecret ?? '';
@@ -109,6 +111,8 @@ export class TradingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
       (client as { protocol?: string }).protocol = selectedSubprotocol;
     }
 
+    this.telemetryMetrics.wsActiveConnections?.add(1);
+
     if (user) {
       this.logger.debug(`WebSocket client connected: user=${user.userId} (${user.walletAddress})`);
     } else {
@@ -118,6 +122,7 @@ export class TradingGateway implements OnGatewayInit, OnGatewayConnection, OnGat
 
   handleDisconnect(client: AuthenticatedWebSocket): void {
     this.roomManager.removeClient(client);
+    this.telemetryMetrics.wsActiveConnections?.add(-1);
     this.logger.debug(`WebSocket client disconnected (user=${client.user?.userId ?? 'anonymous'})`);
   }
 

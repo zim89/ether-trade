@@ -1,4 +1,5 @@
 import { WebSocket } from 'ws';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { MAX_WS_BUFFER_SIZE_BYTES, RoomManagerService } from './room-manager.service';
 
 describe('RoomManagerService', () => {
@@ -11,7 +12,10 @@ describe('RoomManagerService', () => {
   let terminateMock2: jest.Mock;
 
   beforeEach(() => {
-    service = new RoomManagerService();
+    const mockTelemetryMetrics = {
+      wsMessagesBroadcastRate: { add: jest.fn() },
+    } as unknown as TelemetryMetricsService;
+    service = new RoomManagerService(mockTelemetryMetrics);
     sendMock1 = jest.fn();
     terminateMock1 = jest.fn();
     sendMock2 = jest.fn();

@@ -1,19 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TimeUnit } from '@valkey/valkey-glide';
 import { v7 as uuidv7 } from 'uuid';
+import { TelemetryMetricsService } from '@app/common/telemetry';
 import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class DistributedLockService {
   private readonly logger = new Logger(DistributedLockService.name);
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly telemetryMetrics: TelemetryMetricsService,
+  ) {}
 
   /**
    * Acquire a distributed lock for a follower with safe default TTL 10 000 ms.
    * Prevents concurrent order overlap and margin overdraft.
    */
   async acquireLock(key: string, ttlMs = 10000): Promise<string | null> {
+    const start = process.hrtime.bigint();
+    let acquired = false;
     try {
       const lockToken = uuidv7();
       const client = await this.redisService.getClient();
@@ -24,10 +30,16 @@ export class DistributedLockService {
         expiry: { type: TimeUnit.Milliseconds, count: ttlMs },
       });
 
-      return result === 'OK' ? lockToken : null;
+      acquired = result === 'OK';
+      return acquired ? lockToken : null;
     } catch (err: unknown) {
       this.logger.error(`Failed to acquire lock for key ${key}: ${(err as Error).message}`);
       return null;
+    } finally {
+      const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
+      this.telemetryMetrics.lockAcquisitionDurationMs?.record(durationMs, {
+        success: String(acquired),
+      });
     }
   }
 
