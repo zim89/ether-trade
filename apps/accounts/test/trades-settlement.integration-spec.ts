@@ -108,6 +108,7 @@ describe('TradesSettlement (Integration)', () => {
       buyerLimitPrice: '3050.00000000',
       buyerFee: '0.00000000',
       sellerFee: '0.00000000',
+      sequenceId: 1,
       timestamp: Date.now(),
     };
 

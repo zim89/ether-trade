@@ -94,6 +94,7 @@ export interface GetOrderBookResponse {
   /** Sorted ascending by price */
   asks: OrderBookLevel[];
   timestamp: number;
+  sequenceId: number;
 }
 
 export const ORDERS_PACKAGE_NAME = "orders";

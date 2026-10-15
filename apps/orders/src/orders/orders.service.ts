@@ -196,15 +196,25 @@ export class OrdersService implements OnModuleInit {
         const outboxList: NewOutboxEvent[] = [];
         const now = Date.now();
 
-        // 4.2 Write OrderPlacedEvent to outbox_events
+        // 4.2 Generate next sequenceId and get level total quantity for orderbook update
+        const sequenceId = await this.orderbookService.nextSequence(initialOrder.pair);
+        const levelTotalQuantity = await this.orderbookService.getLevelTotalQuantity(
+          initialOrder.pair,
+          initialOrder.side as OrderSide,
+          initialOrder.price,
+        );
+
+        // 4.3 Write OrderPlacedEvent to outbox_events
         const orderPlacedPayload: OrderPlacedEvent = {
           orderId: initialOrder.id,
           userId: initialOrder.userId,
           symbol: initialOrder.pair,
-          side: initialOrder.side.toLowerCase() as 'buy' | 'sell',
-          type: initialOrder.type.toLowerCase() as 'limit' | 'market',
+          side: initialOrder.side as OrderSide,
+          type: initialOrder.type as OrderType,
           price: initialOrder.price,
           quantity: initialOrder.amount,
+          levelTotalQuantity,
+          sequenceId,
           timestamp: now,
         };
 
@@ -227,11 +237,12 @@ export class OrdersService implements OnModuleInit {
           retryCount: 0,
         });
 
-        // 4.3 Match against Orderbook within same transaction
+        // 4.4 Match against Orderbook within same transaction
         const matchResult = await this.matchingEngineService.match(initialOrder, tx);
 
-        // 4.4 Record TradeExecutedEvent for each trade and OrderFilledEvent for filled orders
+        // 4.5 Record TradeExecutedEvent for each trade and OrderFilledEvent for filled orders
         for (const trade of matchResult.trades) {
+          const tradeSequenceId = await this.orderbookService.nextSequence(trade.symbol);
           const tradeExecutedPayload: TradeExecutedEvent = {
             tradeId: trade.tradeId,
             buyOrderId: trade.buyOrderId,
@@ -244,6 +255,7 @@ export class OrdersService implements OnModuleInit {
             buyerLimitPrice: trade.buyerLimitPrice,
             buyerFee: trade.buyerFee,
             sellerFee: trade.sellerFee,
+            sequenceId: tradeSequenceId,
             timestamp: now,
           };
 
@@ -404,7 +416,20 @@ export class OrdersService implements OnModuleInit {
 
     const correlationId = uuidv7();
 
-    // 1. Transactional cancellation in DB + OrderCancelledEvent in outbox
+    // 1. Remove from in-memory orderbook first to get accurate post-cancellation levelTotalQuantity
+    await this.orderbookService.removeOrder(
+      orderId,
+      existingOrder.pair,
+      existingOrder.side as OrderSide,
+    );
+    const sequenceId = await this.orderbookService.nextSequence(existingOrder.pair);
+    const levelTotalQuantity = await this.orderbookService.getLevelTotalQuantity(
+      existingOrder.pair,
+      existingOrder.side as OrderSide,
+      existingOrder.price,
+    );
+
+    // 2. Transactional cancellation in DB + OrderCancelledEvent in outbox
     const cancelledOrder = await this.db.transaction(async (tx) => {
       const updated = await this.ordersRepository.cancel(orderId, userId, tx);
       if (!updated) {
@@ -419,6 +444,11 @@ export class OrdersService implements OnModuleInit {
         orderId: updated.id,
         userId: updated.userId,
         symbol: updated.pair,
+        price: updated.price,
+        remainingQuantity: updated.remainingAmount,
+        levelTotalQuantity,
+        side: updated.side as OrderSide,
+        sequenceId,
         reason: 'User cancelled',
         timestamp: now,
       };
@@ -447,13 +477,6 @@ export class OrdersService implements OnModuleInit {
 
       return updated;
     });
-
-    // 2. Remove from in-memory orderbook
-    await this.orderbookService.removeOrder(
-      orderId,
-      cancelledOrder.pair,
-      cancelledOrder.side as OrderSide,
-    );
 
     // 3. Unlock remaining reserved balance in accounts-service synchronously for immediate UI reflection
     const [baseCurrency, quoteCurrency] = cancelledOrder.pair.split('_') as [Currency, Currency];

@@ -16,6 +16,7 @@ describe('trades-settlement.util', () => {
       buyerLimitPrice: '3000.00000000',
       buyerFee: '0',
       sellerFee: '0',
+      sequenceId: 1,
       timestamp: Date.now(),
     };
 
@@ -41,6 +42,7 @@ describe('trades-settlement.util', () => {
       buyerLimitPrice: '62000.00000000', // buyer was willing to pay more
       buyerFee: '0',
       sellerFee: '0',
+      sequenceId: 1,
       timestamp: Date.now(),
     };
 
@@ -65,6 +67,7 @@ describe('trades-settlement.util', () => {
       buyerLimitPrice: '3000.00000000',
       buyerFee: '0',
       sellerFee: '0',
+      sequenceId: 1,
       timestamp: Date.now(),
     };
 

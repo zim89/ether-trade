@@ -137,6 +137,61 @@ export class OrderbookService {
   /**
    * Constructs the aggregated orderbook (depth) for a pair.
    */
+  /**
+   * Generates next monotonic sequence ID for orderbook pair.
+   */
+  async nextSequence(pair: string): Promise<number> {
+    const client = await this.redisService.getClient();
+    const seqKey = ORDER_REDIS_KEYS.orderbookSequence(pair);
+    const result = (await client.customCommand(['INCR', seqKey])) as number | string;
+    return typeof result === 'number' ? result : parseInt(result, 10);
+  }
+
+  /**
+   * Gets current sequence ID for orderbook pair.
+   */
+  async getSequence(pair: string): Promise<number> {
+    const client = await this.redisService.getClient();
+    const seqKey = ORDER_REDIS_KEYS.orderbookSequence(pair);
+    const result = (await client.customCommand(['GET', seqKey])) as string | null;
+    return result ? parseInt(result, 10) : 0;
+  }
+
+  /**
+   * Calculates aggregate remaining quantity at a specific price level for a pair and side.
+   */
+  async getLevelTotalQuantity(pair: string, side: OrderSide, price: string): Promise<string> {
+    const client = await this.redisService.getClient();
+    const zsetKey =
+      side === OrderSide.BUY
+        ? ORDER_REDIS_KEYS.orderbookBids(pair)
+        : ORDER_REDIS_KEYS.orderbookAsks(pair);
+
+    const priceNum = new BigNumber(price).toNumber();
+    const orderIds = (await client.zrange(
+      zsetKey,
+      { start: 0, end: 500 },
+      { reverse: false },
+    )) as string[];
+
+    if (!orderIds || orderIds.length === 0) {
+      return '0';
+    }
+
+    let total = new BigNumber(0);
+    for (const orderId of orderIds) {
+      const details = await this.getOrderDetails(orderId);
+      if (details && new BigNumber(details.price).isEqualTo(priceNum)) {
+        total = total.plus(new BigNumber(details.remainingAmount));
+      }
+    }
+
+    return total.toFixed(8);
+  }
+
+  /**
+   * Constructs the aggregated orderbook (depth) for a pair.
+   */
   async getOrderBook(pair: string, depth = 50): Promise<GetOrderBookResponse> {
     const client = await this.redisService.getClient();
     const bidsKey = ORDER_REDIS_KEYS.orderbookBids(pair);
@@ -158,12 +213,14 @@ export class OrderbookService {
 
     const bids = await this.aggregateLevels(bidOrderIds, depth);
     const asks = await this.aggregateLevels(askOrderIds, depth);
+    const sequenceId = await this.getSequence(pair);
 
     return {
       pair,
       bids,
       asks,
       timestamp: Math.floor(Date.now() / 1000),
+      sequenceId,
     };
   }
 
