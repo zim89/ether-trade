@@ -4,10 +4,21 @@ import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { COMMON_LOGS, CONFIG_NAMESPACES } from '@app/common/constants';
 import { CopyTradingAppConfig } from '../config';
+import { CopyOrdersHistoryRepository } from './copy-orders-history.repository';
+import { CopySubscriptionsRepository } from './copy-subscriptions.repository';
 import { DATABASE_POOL, DRIZZLE_CLIENT } from './database.constants';
+import { MasterTradersRepository } from './master-traders.repository';
+import { ProcessedEventsRepository } from './processed-events.repository';
 import * as schema from './schema';
 
 export type DrizzleDB = PostgresJsDatabase<typeof schema>;
+
+const repositories = [
+  MasterTradersRepository,
+  CopySubscriptionsRepository,
+  ProcessedEventsRepository,
+  CopyOrdersHistoryRepository,
+];
 
 @Global()
 @Module({
@@ -36,8 +47,9 @@ export type DrizzleDB = PostgresJsDatabase<typeof schema>;
         return drizzle(pool, { schema });
       },
     },
+    ...repositories,
   ],
-  exports: [DRIZZLE_CLIENT, DATABASE_POOL],
+  exports: [DRIZZLE_CLIENT, DATABASE_POOL, ...repositories],
 })
 export class DatabaseModule implements OnApplicationShutdown {
   private readonly logger = new Logger(DatabaseModule.name);
