@@ -46,6 +46,12 @@ export class OrderBookResponseDto {
     description: 'Unix timestamp in seconds when the snapshot was generated',
   })
   timestamp: number;
+
+  @ApiProperty({
+    example: 42,
+    description: 'Monotonic sequence counter for orderbook snapshot sync',
+  })
+  sequenceId: number;
 }
 
 export class GetOrderBookQueryDto {

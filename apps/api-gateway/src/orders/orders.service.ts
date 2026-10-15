@@ -151,6 +151,7 @@ export class OrdersService {
       bids: response.bids ?? [],
       asks: response.asks ?? [],
       timestamp: Number(response.timestamp),
+      sequenceId: Number(response.sequenceId ?? 0),
     };
   }
 

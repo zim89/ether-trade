@@ -1,5 +1,6 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { WsAdapter } from '@nestjs/platform-ws';
 import cookieParser from 'cookie-parser';
 import { COMMON_LOGS, LOGGER_CONTEXTS } from '@app/common/constants';
 import { HttpExceptionFilter } from '@app/common/filters';
@@ -18,16 +19,19 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
 
-  // 1. CORS
+  // 1. WebSocket Adapter (@nestjs/platform-ws)
+  app.useWebSocketAdapter(new WsAdapter(app));
+
+  // 2. CORS
   app.enableCors(getCorsConfig(env.CORS_ORIGIN));
 
-  // 2. Cookie parser with secret for signed cookies
+  // 3. Cookie parser with secret for signed cookies
   app.use(cookieParser(env.COOKIE_SECRET));
 
-  // 3. Global REST API prefix (e.g. /api/v1)
+  // 4. Global REST API prefix (e.g. /api/v1)
   app.setGlobalPrefix(API_GATEWAY_CONSTANTS.globalPrefix);
 
-  // 4. Global validation pipe
+  // 5. Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -37,10 +41,10 @@ async function bootstrap() {
     }),
   );
 
-  // 5. Global HTTP exception filter (unified gRPC and HTTP error response schema)
+  // 6. Global HTTP exception filter (unified gRPC and HTTP error response schema)
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // 6. OpenAPI / Swagger documentation
+  // 7. OpenAPI / Swagger documentation
   const swaggerPath = setupSwagger(app);
 
   app.enableShutdownHooks();
