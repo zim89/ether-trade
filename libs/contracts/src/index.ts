@@ -60,6 +60,26 @@ export {
   type WithdrawalItem,
 } from './generated/transfers.pb';
 
+export {
+  COPY_TRADING_PACKAGE_NAME,
+  COPY_TRADING_SERVICE_NAME,
+  CopyTradingServiceControllerMethods,
+  type CopyTradingServiceClient,
+  type CopyTradingServiceController,
+  type MasterTraderItem,
+  type RegisterMasterRequest,
+  type RegisterMasterResponse,
+  type CopySubscriptionItem,
+  type GetMasterTradersRequest,
+  type GetMasterTradersResponse,
+  type CreateSubscriptionRequest,
+  type CreateSubscriptionResponse,
+  type CancelSubscriptionRequest,
+  type CancelSubscriptionResponse,
+  type GetSubscriptionsRequest,
+  type GetSubscriptionsResponse,
+} from './generated/copy_trading.pb';
+
 export * from './orders.types';
 export * from './transfers.types';
 export * from './transfers';

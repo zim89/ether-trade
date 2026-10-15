@@ -1,4 +1,5 @@
 import { ACCOUNTS_PACKAGE_NAME, ACCOUNTS_SERVICE_NAME } from './generated/accounts.pb';
+import { COPY_TRADING_PACKAGE_NAME, COPY_TRADING_SERVICE_NAME } from './generated/copy_trading.pb';
 import { IDENTITY_PACKAGE_NAME, IDENTITY_SERVICE_NAME } from './generated/identity.pb';
 import { ORDERS_PACKAGE_NAME, ORDERS_SERVICE_NAME } from './generated/orders.pb';
 import { TRANSFERS_PACKAGE_NAME, TRANSFERS_SERVICE_NAME } from './generated/transfers.pb';
@@ -12,6 +13,7 @@ export const PROTO_PACKAGES = {
   accounts: ACCOUNTS_PACKAGE_NAME,
   orders: ORDERS_PACKAGE_NAME,
   transfers: TRANSFERS_PACKAGE_NAME,
+  copyTrading: COPY_TRADING_PACKAGE_NAME,
 } as const;
 
 export type ProtoPackageName = (typeof PROTO_PACKAGES)[keyof typeof PROTO_PACKAGES];
@@ -25,6 +27,7 @@ export const PROTO_SERVICES = {
   accounts: ACCOUNTS_SERVICE_NAME,
   orders: ORDERS_SERVICE_NAME,
   transfers: TRANSFERS_SERVICE_NAME,
+  copyTrading: COPY_TRADING_SERVICE_NAME,
 } as const;
 
 export type ProtoServiceName = (typeof PROTO_SERVICES)[keyof typeof PROTO_SERVICES];
@@ -66,6 +69,14 @@ export const GRPC_SERVICES_CONFIG = {
     packageName: PROTO_PACKAGES.transfers,
     serviceName: PROTO_SERVICES.transfers,
   },
+  copyTrading: {
+    key: 'copyTrading',
+    port: 50055,
+    defaultUrl: '0.0.0.0:50055',
+    protoRelativePath: 'libs/contracts/proto/copy_trading.proto',
+    packageName: PROTO_PACKAGES.copyTrading,
+    serviceName: PROTO_SERVICES.copyTrading,
+  },
 } as const;
 
 export type GrpcServiceKey = keyof typeof GRPC_SERVICES_CONFIG;
@@ -78,13 +89,14 @@ export const GRPC_SERVICE_KEYS = {
   accounts: 'accounts',
   orders: 'orders',
   transfers: 'transfers',
+  copyTrading: 'copyTrading',
 } as const satisfies Record<GrpcServiceKey, GrpcServiceKey>;
 
 /**
  * Standard gRPC Metadata header keys for East-West inter-service communication (M2M).
  */
 export const GRPC_METADATA_KEYS = {
-  /** Identifier of the calling service (e.g. 'api-gateway', 'blockchain-worker', 'orders', 'transfers') */
+  /** Identifier of the calling service (e.g. 'api-gateway', 'blockchain-worker', 'orders', 'transfers', 'copy-trading') */
   serviceId: 'x-service-id',
   /** Optional caller user ID when request is executed on behalf of a user */
   callerId: 'x-caller-id',
@@ -102,6 +114,7 @@ export const SERVICE_CALLER_IDS = {
   identityService: 'identity-service',
   accountsService: 'accounts-service',
   transfersService: 'transfers-service',
+  copyTradingService: 'copy-trading-service',
 } as const;
 
 export type ServiceCallerId = (typeof SERVICE_CALLER_IDS)[keyof typeof SERVICE_CALLER_IDS];
