@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DEFAULT_ENV_FILES } from '@app/common/constants';
+import { TelemetryModule } from '@app/common/telemetry';
 import { CopyRatioCalculator } from './calculator/copy-ratio.calculator';
 import { ClientsModule } from './clients/clients.module';
 import { appConfig, databaseConfig, redisConfig, validateEnvironment } from './config';
@@ -14,6 +15,7 @@ import { RiskGuardService } from './risk/risk-guard.service';
 
 @Module({
   imports: [
+    TelemetryModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [...DEFAULT_ENV_FILES],

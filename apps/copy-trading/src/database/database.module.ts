@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { COMMON_LOGS, CONFIG_NAMESPACES } from '@app/common/constants';
+import { withPostgresTracing } from '@app/common/telemetry';
 import { CopyTradingAppConfig } from '../config';
 import { CopyOrdersHistoryRepository } from './copy-orders-history.repository';
 import { CopySubscriptionsRepository } from './copy-subscriptions.repository';
@@ -33,11 +34,17 @@ const repositories = [
           dbConf.url ||
           `postgres://${dbConf.user}:${dbConf.password}@${dbConf.host}:${dbConf.port}/${dbConf.name}`;
 
-        return postgres(connectionString, {
-          max: dbConf.maxConnections,
-          idle_timeout: 30,
-          connect_timeout: 10,
-        });
+        return postgres(
+          connectionString,
+          withPostgresTracing(
+            {
+              max: dbConf.maxConnections,
+              idle_timeout: 30,
+              connect_timeout: 10,
+            },
+            { dbName: dbConf.name },
+          ),
+        );
       },
     },
     {

@@ -1,8 +1,14 @@
-import { Logger } from '@nestjs/common';
+// eslint-disable-next-line import/order
+import { initTracer } from '@app/common/telemetry';
+
+// Initialize OpenTelemetry SDK before loading application modules (fail-safe for Dev & Prod)
+initTracer({ serviceName: 'copy-trading-service' });
+
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { COMMON_LOGS, LOGGER_CONTEXTS } from '@app/common/constants';
 import { GrpcExceptionFilter } from '@app/common/filters';
+import { PinoLoggerService } from '@app/common/telemetry';
 import { loadAndValidateEnv } from '@app/common/utils';
 import {
   COPY_TRADING_PACKAGE_NAME,
@@ -14,8 +20,6 @@ import { EnvironmentVariables } from './config';
 import { CopyTradingModule } from './copy-trading.module';
 
 async function bootstrap() {
-  const logger = new Logger(LOGGER_CONTEXTS.copyTradingBootstrap);
-
   /*
    * Preload & validate environment variables before IoC assembly (fail-fast).
    */
@@ -29,13 +33,20 @@ async function bootstrap() {
       protoPath: getServiceProtoPath(GRPC_SERVICE_KEYS.copyTrading),
       url: grpcUrl,
     },
+    bufferLogs: true,
   });
+
+  const pinoLogger = app.get(PinoLoggerService);
+  app.useLogger(pinoLogger);
 
   app.useGlobalFilters(new GrpcExceptionFilter());
   app.enableShutdownHooks();
 
   await app.listen();
-  logger.log(COMMON_LOGS.bootstrap.grpcServiceRunning(COPY_TRADING_SERVICE_NAME, grpcUrl));
+  pinoLogger.log(
+    COMMON_LOGS.bootstrap.grpcServiceRunning(COPY_TRADING_SERVICE_NAME, grpcUrl),
+    LOGGER_CONTEXTS.copyTradingBootstrap,
+  );
 }
 
 void bootstrap();

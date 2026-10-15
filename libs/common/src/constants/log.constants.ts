@@ -7,6 +7,7 @@ export const LOGGER_CONTEXTS = {
   accountsBootstrap: 'AccountsBootstrap',
   ordersBootstrap: 'OrdersBootstrap',
   identityBootstrap: 'IdentityBootstrap',
+  transfersBootstrap: 'TransfersBootstrap',
   apiGatewayBootstrap: 'ApiGatewayBootstrap',
   copyTradingBootstrap: 'CopyTradingBootstrap',
   database: 'Database',

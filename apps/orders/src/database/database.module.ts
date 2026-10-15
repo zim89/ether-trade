@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { COMMON_LOGS, CONFIG_NAMESPACES } from '@app/common/constants';
+import { withPostgresTracing } from '@app/common/telemetry';
 import { OrdersAppConfig } from '../config';
 import { DATABASE_POOL, DRIZZLE_CLIENT } from './database.constants';
 import * as schema from './schema';
@@ -22,11 +23,17 @@ export type DrizzleDB = PostgresJsDatabase<typeof schema>;
           dbConf.url ||
           `postgres://${dbConf.user}:${dbConf.password}@${dbConf.host}:${dbConf.port}/${dbConf.name}`;
 
-        return postgres(connectionString, {
-          max: dbConf.maxConnections,
-          idle_timeout: 30,
-          connect_timeout: 10,
-        });
+        return postgres(
+          connectionString,
+          withPostgresTracing(
+            {
+              max: dbConf.maxConnections,
+              idle_timeout: 30,
+              connect_timeout: 10,
+            },
+            { dbName: dbConf.name },
+          ),
+        );
       },
     },
     {
