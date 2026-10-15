@@ -4,6 +4,7 @@ import { DEFAULT_ENV_FILES } from '@app/common/constants';
 import { CopyRatioCalculator } from './calculator/copy-ratio.calculator';
 import { ClientsModule } from './clients/clients.module';
 import { appConfig, databaseConfig, redisConfig, validateEnvironment } from './config';
+import { ConsumersModule } from './consumers/consumers.module';
 import { CopyTradingController } from './copy-trading.controller';
 import { CopyTradingService } from './copy-trading.service';
 import { DatabaseModule } from './database/database.module';
@@ -23,6 +24,7 @@ import { RiskGuardService } from './risk/risk-guard.service';
     RedisModule,
     LockModule,
     ClientsModule,
+    ConsumersModule,
   ],
   controllers: [CopyTradingController],
   providers: [CopyRatioCalculator, RiskGuardService, CopyTradingService],
