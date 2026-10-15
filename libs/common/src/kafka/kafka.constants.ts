@@ -29,6 +29,7 @@ export const KAFKA_DOMAINS = {
   orders: 'orders',
   matching: 'matching',
   transfers: 'transfers',
+  copyTrading: 'copy-trading',
 } as const;
 
 /**
@@ -51,6 +52,7 @@ export const KAFKA_CONSUMER_GROUPS = {
   accountsSettlement: 'accounts-settlement-group',
   transfersAudit: 'transfers-audit-group',
   apiGatewayWs: 'api-gateway-ws-group',
+  copyTradingReplication: 'copy-trading-replication-group',
 } as const;
 
 /**

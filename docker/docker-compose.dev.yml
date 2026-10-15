@@ -8,14 +8,14 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_MULTIPLE_DATABASES: identity_db,accounts_db,orders_db,transfers_db
+      POSTGRES_MULTIPLE_DATABASES: identity_db,accounts_db,orders_db,transfers_db,copy_trading_db
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - ether_trade_postgres_data:/var/lib/postgresql/data
       - ./init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 3s
       timeout: 3s
       retries: 5
@@ -26,11 +26,11 @@ services:
     restart: unless-stopped
     command: valkey-server --save "" --loglevel notice
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - ether_trade_redis_data:/data
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ['CMD', 'valkey-cli', 'ping']
       interval: 3s
       timeout: 3s
       retries: 5
@@ -39,12 +39,12 @@ services:
     image: ghcr.io/foundry-rs/foundry:latest
     container_name: ether-trade-anvil
     restart: unless-stopped
-    entrypoint: ["anvil"]
-    command: ["--host", "0.0.0.0", "--port", "8545", "--chain-id", "31337", "--block-time", "1"]
+    entrypoint: ['anvil']
+    command: ['--host', '0.0.0.0', '--port', '8545', '--chain-id', '31337', '--block-time', '1']
     ports:
-      - "8545:8545"
+      - '8545:8545'
     healthcheck:
-      test: ["CMD", "cast", "block-number", "--rpc-url", "http://127.0.0.1:8545"]
+      test: ['CMD', 'cast', 'block-number', '--rpc-url', 'http://127.0.0.1:8545']
       interval: 3s
       timeout: 3s
       retries: 5
@@ -54,8 +54,8 @@ services:
     container_name: ether-trade-kafka
     restart: unless-stopped
     ports:
-      - "9092:9092"
-      - "9094:9094"
+      - '9092:9092'
+      - '9094:9094'
     environment:
       # KRaft configuration (Node ID, Roles, Controller Quorum)
       KAFKA_NODE_ID: 1
@@ -79,7 +79,11 @@ services:
     volumes:
       - ether_trade_kafka_data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      test:
+        [
+          'CMD-SHELL',
+          '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092',
+        ]
       interval: 5s
       timeout: 5s
       retries: 5

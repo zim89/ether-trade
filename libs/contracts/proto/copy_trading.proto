@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package copy_trading;
+
+service CopyTradingService {
+  rpc RegisterMaster (RegisterMasterRequest) returns (RegisterMasterResponse);
+  rpc GetMasterTraders (GetMasterTradersRequest) returns (GetMasterTradersResponse);
+  rpc CreateSubscription (CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
+  rpc CancelSubscription (CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
+  rpc GetSubscriptions (GetSubscriptionsRequest) returns (GetSubscriptionsResponse);
+}
+
+message MasterTraderItem {
+  string id = 1;
+  string user_id = 2;
+  string display_name = 3;
+  string bio = 4;
+  string total_pnl = 5;
+  string win_rate = 6;
+  int32 total_copiers = 7;
+  string min_deposit = 8;
+  bool is_active = 9;
+}
+
+message RegisterMasterRequest {
+  string user_id = 1;
+  string display_name = 2;
+  optional string bio = 3;
+  optional string min_deposit = 4;
+}
+
+message RegisterMasterResponse {
+  MasterTraderItem master = 1;
+}
+
+message CopySubscriptionItem {
+  string id = 1;
+  string follower_user_id = 2;
+  string master_id = 3;
+  string allocated_balance = 4;
+  string max_slippage_percent = 5;
+  string status = 6;
+  int64 created_at = 7;
+}
+
+message GetMasterTradersRequest {
+  optional int32 limit = 1;
+  optional int32 offset = 2;
+}
+
+message GetMasterTradersResponse {
+  repeated MasterTraderItem items = 1;
+  int32 total = 2;
+}
+
+message CreateSubscriptionRequest {
+  string follower_user_id = 1;
+  string master_id = 2;
+  string allocated_balance = 3;
+  optional string max_slippage_percent = 4;
+  string idempotency_key = 5;
+}
+
+message CreateSubscriptionResponse {
+  CopySubscriptionItem subscription = 1;
+}
+
+message CancelSubscriptionRequest {
+  string subscription_id = 1;
+  string follower_user_id = 2;
+  optional bool close_positions = 3;
+}
+
+message CancelSubscriptionResponse {
+  CopySubscriptionItem subscription = 1;
+}
+
+message GetSubscriptionsRequest {
+  string follower_user_id = 1;
+}
+
+message GetSubscriptionsResponse {
+  repeated CopySubscriptionItem items = 1;
+}

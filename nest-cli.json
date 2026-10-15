@@ -73,6 +73,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/transfers/tsconfig.app.json"
       }
+    },
+    "copy-trading": {
+      "type": "application",
+      "root": "apps/copy-trading",
+      "entryFile": "main",
+      "sourceRoot": "apps/copy-trading/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/copy-trading/tsconfig.app.json"
+      }
     }
   }
 }

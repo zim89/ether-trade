@@ -10,6 +10,7 @@ export interface GatewayConfig {
   accountsGrpcUrl: string;
   ordersGrpcUrl: string;
   transfersGrpcUrl: string;
+  copyTradingGrpcUrl: string;
   grpcDefaultDeadlineMs: number;
   ordersGrpcDeadlineMs: number;
   wsPort?: number;
