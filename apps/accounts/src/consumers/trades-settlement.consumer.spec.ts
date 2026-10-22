@@ -1,13 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import { Currency, TRADING_PAIRS } from '@app/common/constants';
 import { KafkaProducerService } from '@app/common/kafka/kafka-producer.service';
-import {
-  getKafkaTopicName,
-  KAFKA_DOMAINS,
-  KAFKA_TOPIC_EVENTS,
-} from '@app/common/kafka/kafka.constants';
+import { getKafkaTopicName, KAFKA_DOMAINS } from '@app/common/kafka/kafka.constants';
 import { KafkaBatchConsumerPayload } from '@app/common/kafka/kafka.types';
-import { DomainEventEnvelope, DomainEventType, TradeExecutedEvent } from '@app/contracts';
+import { DomainEventEnvelope, DOMAIN_EVENT_TYPES, TradeExecutedEvent } from '@app/contracts';
 import { BalancesRepository } from '../balances/balances.repository';
 import type { DrizzleDB } from '../database/database.module';
 import { ProcessedEventsRepository } from './processed-events.repository';
@@ -88,7 +84,7 @@ describe('TradesSettlementConsumer (Unit)', () => {
 
     const envelope: DomainEventEnvelope<TradeExecutedEvent> = {
       eventId: 'evt-self-1',
-      eventType: DomainEventType.TRADE_EXECUTED,
+      eventType: DOMAIN_EVENT_TYPES.tradeExecuted,
       aggregateId: 't-self-1',
       partitionKey: TRADING_PAIRS.ETH_USDT,
       timestamp: Date.now(),
@@ -97,7 +93,7 @@ describe('TradesSettlementConsumer (Unit)', () => {
     };
 
     const payload: KafkaBatchConsumerPayload = {
-      topic: getKafkaTopicName('test', KAFKA_DOMAINS.matching, KAFKA_TOPIC_EVENTS.tradeExecuted),
+      topic: getKafkaTopicName('test', KAFKA_DOMAINS.matching),
       partition: 0,
       offset: '10',
       key: TRADING_PAIRS.ETH_USDT,
@@ -114,7 +110,7 @@ describe('TradesSettlementConsumer (Unit)', () => {
 
   it('should throw Error if envelope schema is invalid or missing eventId', async () => {
     const payload: KafkaBatchConsumerPayload = {
-      topic: getKafkaTopicName('test', KAFKA_DOMAINS.matching, KAFKA_TOPIC_EVENTS.tradeExecuted),
+      topic: getKafkaTopicName('test', KAFKA_DOMAINS.matching),
       partition: 0,
       offset: '11',
       key: TRADING_PAIRS.ETH_USDT,
@@ -145,7 +141,7 @@ describe('TradesSettlementConsumer (Unit)', () => {
 
     const envelope: DomainEventEnvelope<TradeExecutedEvent> = {
       eventId: 'evt-dup-1',
-      eventType: DomainEventType.TRADE_EXECUTED,
+      eventType: DOMAIN_EVENT_TYPES.tradeExecuted,
       aggregateId: 't-dup-1',
       partitionKey: TRADING_PAIRS.ETH_USDT,
       timestamp: Date.now(),
@@ -167,7 +163,7 @@ describe('TradesSettlementConsumer (Unit)', () => {
     isProcessedMock.mockResolvedValue(true);
 
     const payload: KafkaBatchConsumerPayload = {
-      topic: getKafkaTopicName('test', KAFKA_DOMAINS.matching, KAFKA_TOPIC_EVENTS.tradeExecuted),
+      topic: getKafkaTopicName('test', KAFKA_DOMAINS.matching),
       partition: 0,
       offset: '12',
       key: TRADING_PAIRS.ETH_USDT,

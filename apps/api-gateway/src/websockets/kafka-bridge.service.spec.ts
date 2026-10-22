@@ -3,7 +3,8 @@ import { KafkaProducerService } from '@app/common/kafka/kafka-producer.service';
 import { KafkaBatchConsumerPayload } from '@app/common/kafka/kafka.types';
 import {
   DepositConfirmedEvent,
-  DomainEventType,
+  DOMAIN_EVENT_TYPES,
+  type DomainEventType,
   OrderCancelledEvent,
   OrderFilledEvent,
   OrderPlacedEvent,
@@ -80,7 +81,7 @@ describe('KafkaToWebSocketBridgeService', () => {
       timestamp: 1600000000000,
     };
 
-    await service.handleMessage(createPayload(DomainEventType.TRADE_EXECUTED, tradeEvent));
+    await service.handleMessage(createPayload(DOMAIN_EVENT_TYPES.tradeExecuted, tradeEvent));
 
     expect(publishMock).toHaveBeenCalledTimes(3);
 
@@ -117,7 +118,7 @@ describe('KafkaToWebSocketBridgeService', () => {
       timestamp: 1600000000000,
     };
 
-    await service.handleMessage(createPayload(DomainEventType.ORDER_PLACED, placedEvent));
+    await service.handleMessage(createPayload(DOMAIN_EVENT_TYPES.orderPlaced, placedEvent));
 
     expect(publishMock).toHaveBeenCalledTimes(2);
 
@@ -146,7 +147,7 @@ describe('KafkaToWebSocketBridgeService', () => {
       timestamp: 1600000000000,
     };
 
-    await service.handleMessage(createPayload(DomainEventType.ORDER_CANCELLED, cancelEvent));
+    await service.handleMessage(createPayload(DOMAIN_EVENT_TYPES.orderCancelled, cancelEvent));
 
     expect(publishMock).toHaveBeenCalledTimes(2);
 
@@ -173,7 +174,7 @@ describe('KafkaToWebSocketBridgeService', () => {
       timestamp: 1600000000000,
     };
 
-    await service.handleMessage(createPayload(DomainEventType.ORDER_FILLED, filledEvent));
+    await service.handleMessage(createPayload(DOMAIN_EVENT_TYPES.orderFilled, filledEvent));
 
     expect(publishMock).toHaveBeenCalledTimes(1);
     expect(publishMock).toHaveBeenCalledWith(
@@ -193,7 +194,7 @@ describe('KafkaToWebSocketBridgeService', () => {
       timestamp: 1600000000000,
     };
 
-    await service.handleMessage(createPayload(DomainEventType.DEPOSIT_CONFIRMED, depositEvent));
+    await service.handleMessage(createPayload(DOMAIN_EVENT_TYPES.depositConfirmed, depositEvent));
 
     expect(publishMock).toHaveBeenCalledTimes(1);
     expect(publishMock).toHaveBeenCalledWith(
@@ -212,7 +213,9 @@ describe('KafkaToWebSocketBridgeService', () => {
       timestamp: 1600000000000,
     };
 
-    await service.handleMessage(createPayload(DomainEventType.WITHDRAWAL_COMPLETED, withdrawEvent));
+    await service.handleMessage(
+      createPayload(DOMAIN_EVENT_TYPES.withdrawalCompleted, withdrawEvent),
+    );
 
     expect(publishMock).toHaveBeenCalledTimes(1);
     expect(publishMock).toHaveBeenCalledWith(
@@ -232,7 +235,7 @@ describe('KafkaToWebSocketBridgeService', () => {
       timestamp: 1600000000000,
     };
 
-    await service.handleMessage(createPayload(DomainEventType.WITHDRAWAL_FAILED, failedEvent));
+    await service.handleMessage(createPayload(DOMAIN_EVENT_TYPES.withdrawalFailed, failedEvent));
 
     expect(publishMock).toHaveBeenCalledTimes(1);
     expect(publishMock).toHaveBeenCalledWith(

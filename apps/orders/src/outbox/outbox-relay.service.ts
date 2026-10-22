@@ -101,17 +101,23 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
       const publishedIds: string[] = [];
 
       for (const event of pendingEvents) {
-        // Topic naming convention: <env>.<domain>.<event_name>
+        // Topic naming convention: <env>.<domain>.lifecycle
         const domain =
           event.aggregateType === OutboxAggregateType.ORDER
             ? KAFKA_DOMAINS.orders
             : KAFKA_DOMAINS.matching;
-        const topic = getKafkaTopicName(this.appEnv, domain, event.eventType);
+        const topic = getKafkaTopicName(this.appEnv, domain);
+
+        const eventAction =
+          (event.payload && typeof event.payload === 'object' && 'action' in event.payload
+            ? (event.payload as { action?: string }).action
+            : undefined) || event.eventType.toUpperCase();
 
         const headers: Record<string, string> = {
           [KAFKA_HEADERS.originService]: KAFKA_CLIENT_IDS.orders,
           [KAFKA_HEADERS.eventId]: event.id,
           [KAFKA_HEADERS.aggregateId]: event.aggregateId,
+          [KAFKA_HEADERS.action]: eventAction,
         };
         if (event.traceparent) {
           headers[KAFKA_HEADERS.traceparent] = event.traceparent;

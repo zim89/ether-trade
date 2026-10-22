@@ -8,7 +8,7 @@ import {
   getKafkaTopicName,
   KAFKA_CONSUMER_GROUPS,
   KAFKA_DOMAINS,
-  KAFKA_TOPIC_EVENTS,
+  KAFKA_HEADERS,
 } from '@app/common/kafka/kafka.constants';
 import { KafkaBatchConsumerPayload } from '@app/common/kafka/kafka.types';
 import { TelemetryMetricsService } from '@app/common/telemetry';
@@ -17,6 +17,7 @@ import {
   type DomainEventEnvelope,
   type OrdersServiceClient,
   type TradeExecutedEvent,
+  MATCHING_ACTIONS,
   OrderSide,
   OrderType,
   PROTO_SERVICES,
@@ -67,11 +68,7 @@ export class MasterTradeReplicationConsumer extends BaseKafkaConsumer implements
     const appEnv = (
       configService.get<string>(SHARED_ENV_KEYS.appEnv) || SHARED_ENV_DEFAULTS.appEnv
     ).toLowerCase();
-    const tradeTopic = getKafkaTopicName(
-      appEnv,
-      KAFKA_DOMAINS.matching,
-      KAFKA_TOPIC_EVENTS.tradeExecuted,
-    );
+    const tradeTopic = getKafkaTopicName(appEnv, KAFKA_DOMAINS.matching);
 
     super(configService, producerService, {
       groupId: KAFKA_CONSUMER_GROUPS.copyTradingReplication,
@@ -95,6 +92,12 @@ export class MasterTradeReplicationConsumer extends BaseKafkaConsumer implements
       throw new Error(
         `INVALID_EVENT_SCHEMA: Missing envelope or payload at offset ${payload.offset}`,
       );
+    }
+
+    const action = envelope.action || payload.headers[KAFKA_HEADERS.action];
+    if (action && action !== MATCHING_ACTIONS.tradeExecuted) {
+      this.logger.debug(`Ignoring non-matching action in replication consumer: ${action}`);
+      return;
     }
 
     const trade = envelope.payload;

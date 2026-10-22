@@ -1,13 +1,14 @@
 import { ConfigService } from '@nestjs/config';
 import { Currency, TRADING_PAIRS } from '@app/common/constants';
 import { KafkaProducerService } from '@app/common/kafka/kafka-producer.service';
-import {
-  getKafkaTopicName,
-  KAFKA_DOMAINS,
-  KAFKA_TOPIC_EVENTS,
-} from '@app/common/kafka/kafka.constants';
+import { getKafkaTopicName, KAFKA_DOMAINS, KAFKA_HEADERS } from '@app/common/kafka/kafka.constants';
 import { KafkaBatchConsumerPayload } from '@app/common/kafka/kafka.types';
-import { DomainEventEnvelope, DomainEventType, TradeExecutedEvent } from '@app/contracts';
+import {
+  DomainEventEnvelope,
+  DOMAIN_EVENT_TYPES,
+  MATCHING_ACTIONS,
+  TradeExecutedEvent,
+} from '@app/contracts';
 import { DbTestContext } from '../../../test/helpers';
 import { BalancesRepository } from '../src/balances/balances.repository';
 import { ProcessedEventsRepository } from '../src/consumers/processed-events.repository';
@@ -114,7 +115,8 @@ describe('TradesSettlement (Integration)', () => {
 
     const envelope: DomainEventEnvelope<TradeExecutedEvent> = {
       eventId: '018f3a2b-8888-7000-8000-000000000001',
-      eventType: DomainEventType.TRADE_EXECUTED,
+      action: MATCHING_ACTIONS.tradeExecuted,
+      eventType: DOMAIN_EVENT_TYPES.tradeExecuted,
       aggregateId: tradeEvent.tradeId,
       partitionKey: tradeEvent.symbol,
       timestamp: Date.now(),
@@ -123,12 +125,14 @@ describe('TradesSettlement (Integration)', () => {
     };
 
     const payload: KafkaBatchConsumerPayload = {
-      topic: getKafkaTopicName('test', KAFKA_DOMAINS.matching, KAFKA_TOPIC_EVENTS.tradeExecuted),
+      topic: getKafkaTopicName('test', KAFKA_DOMAINS.matching),
       partition: 0,
       offset: '100',
       key: tradeEvent.symbol,
       value: envelope,
-      headers: {},
+      headers: {
+        [KAFKA_HEADERS.action]: MATCHING_ACTIONS.tradeExecuted,
+      },
       heartbeat: jest.fn(),
     };
 

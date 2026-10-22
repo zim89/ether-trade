@@ -8,10 +8,10 @@ import {
   getKafkaTopicName,
   KAFKA_CONSUMER_GROUPS,
   KAFKA_DOMAINS,
-  KAFKA_TOPIC_EVENTS,
+  KAFKA_HEADERS,
 } from '@app/common/kafka/kafka.constants';
 import { KafkaBatchConsumerPayload } from '@app/common/kafka/kafka.types';
-import type { DomainEventEnvelope, TradeExecutedEvent } from '@app/contracts';
+import { DomainEventEnvelope, MATCHING_ACTIONS, TradeExecutedEvent } from '@app/contracts';
 import { BalancesRepository } from '../balances/balances.repository';
 import { DRIZZLE_CLIENT } from '../database/database.constants';
 import type { DrizzleDB } from '../database/database.module';
@@ -38,11 +38,7 @@ export class TradesSettlementConsumer extends BaseKafkaConsumer {
     const appEnv = (
       configService.get<string>(SHARED_ENV_KEYS.appEnv) || SHARED_ENV_DEFAULTS.appEnv
     ).toLowerCase();
-    const tradeTopic = getKafkaTopicName(
-      appEnv,
-      KAFKA_DOMAINS.matching,
-      KAFKA_TOPIC_EVENTS.tradeExecuted,
-    );
+    const tradeTopic = getKafkaTopicName(appEnv, KAFKA_DOMAINS.matching);
 
     super(configService, producerService, {
       groupId: KAFKA_CONSUMER_GROUPS.accountsSettlement,
@@ -61,6 +57,12 @@ export class TradesSettlementConsumer extends BaseKafkaConsumer {
       throw new Error(
         `INVALID_EVENT_SCHEMA: Missing envelope or payload at offset ${payload.offset}`,
       );
+    }
+
+    const action = envelope.action || payload.headers[KAFKA_HEADERS.action];
+    if (action && action !== MATCHING_ACTIONS.tradeExecuted) {
+      this.logger.debug(`Ignoring non-matching action in settlement consumer: ${action}`);
+      return;
     }
 
     const trade = envelope.payload;

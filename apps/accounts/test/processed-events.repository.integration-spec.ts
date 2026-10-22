@@ -1,5 +1,5 @@
 import { KAFKA_CONSUMER_GROUPS } from '@app/common/kafka/kafka.constants';
-import { DomainEventType } from '@app/contracts';
+import { DOMAIN_EVENT_TYPES } from '@app/contracts';
 import { DbTestContext } from '../../../test/helpers';
 import { ProcessedEventsRepository } from '../src/consumers/processed-events.repository';
 import * as schema from '../src/database/schema';
@@ -40,7 +40,7 @@ describe('ProcessedEventsRepository (Integration)', () => {
 
     await repository.markEventProcessed({
       eventId,
-      eventType: DomainEventType.TRADE_EXECUTED,
+      eventType: DOMAIN_EVENT_TYPES.tradeExecuted,
       consumerGroup: KAFKA_CONSUMER_GROUPS.accountsSettlement,
     });
 
@@ -58,7 +58,7 @@ describe('ProcessedEventsRepository (Integration)', () => {
       await repository.markEventProcessed(
         {
           eventId,
-          eventType: DomainEventType.TRADE_EXECUTED,
+          eventType: DOMAIN_EVENT_TYPES.tradeExecuted,
           consumerGroup: KAFKA_CONSUMER_GROUPS.accountsSettlement,
         },
         tx,
@@ -75,7 +75,7 @@ describe('ProcessedEventsRepository (Integration)', () => {
   it('should delete processed events older than retention cutoff date', async () => {
     await repository.markEventProcessed({
       eventId: '018f3a2b-1111-7000-8000-000000000003',
-      eventType: DomainEventType.TRADE_EXECUTED,
+      eventType: DOMAIN_EVENT_TYPES.tradeExecuted,
       consumerGroup: KAFKA_CONSUMER_GROUPS.accountsSettlement,
     });
 

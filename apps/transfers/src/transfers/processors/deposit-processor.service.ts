@@ -11,6 +11,7 @@ import {
   OutboxStatus,
   PROTO_SERVICES,
   SERVICE_CALLER_IDS,
+  TRANSFERS_ACTIONS,
 } from '@app/contracts';
 import {
   bytes16ToUuid,
@@ -182,6 +183,7 @@ export class DepositProcessorService {
           eventType: 'deposit_confirmed',
           payload: {
             eventId: uuidv7(),
+            action: TRANSFERS_ACTIONS.depositConfirmed,
             eventType: 'transfers.deposit_confirmed',
             aggregateId: created.id,
             partitionKey: created.userId,

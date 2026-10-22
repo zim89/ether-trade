@@ -1,5 +1,5 @@
 import { TRADING_PAIRS } from '@app/common/constants';
-import { DomainEventType, OutboxAggregateType, OutboxStatus } from '@app/contracts';
+import { DOMAIN_EVENT_TYPES, OutboxAggregateType, OutboxStatus } from '@app/contracts';
 import { DbTestContext } from '../../../test/helpers';
 import * as schema from '../src/database/schema';
 import { OutboxRepository } from '../src/outbox/outbox.repository';
@@ -37,7 +37,7 @@ describe('OutboxRepository (Integration)', () => {
       aggregateType: OutboxAggregateType.ORDER,
       aggregateId: '018f3a2b-1111-7000-8000-000000000001',
       partitionKey: TRADING_PAIRS.ETH_USDT,
-      eventType: DomainEventType.ORDER_PLACED,
+      eventType: DOMAIN_EVENT_TYPES.orderPlaced,
       payload: { test: true },
       status: OutboxStatus.PENDING,
       retryCount: 0,
@@ -62,7 +62,7 @@ describe('OutboxRepository (Integration)', () => {
         aggregateType: OutboxAggregateType.ORDER,
         aggregateId: '018f3a2b-1111-7000-8000-000000000001',
         partitionKey: TRADING_PAIRS.ETH_USDT,
-        eventType: DomainEventType.ORDER_PLACED,
+        eventType: DOMAIN_EVENT_TYPES.orderPlaced,
         payload: { item: 1 },
         status: OutboxStatus.PENDING,
       },
@@ -70,7 +70,7 @@ describe('OutboxRepository (Integration)', () => {
         aggregateType: OutboxAggregateType.ORDER,
         aggregateId: '018f3a2b-1111-7000-8000-000000000002',
         partitionKey: TRADING_PAIRS.ETH_USDT,
-        eventType: DomainEventType.ORDER_PLACED,
+        eventType: DOMAIN_EVENT_TYPES.orderPlaced,
         payload: { item: 2 },
         status: OutboxStatus.PENDING,
       },
@@ -101,7 +101,7 @@ describe('OutboxRepository (Integration)', () => {
       aggregateType: OutboxAggregateType.ORDER,
       aggregateId: '018f3a2b-1111-7000-8000-000000000003',
       partitionKey: TRADING_PAIRS.ETH_USDT,
-      eventType: DomainEventType.ORDER_PLACED,
+      eventType: DOMAIN_EVENT_TYPES.orderPlaced,
       payload: { ok: true },
       status: OutboxStatus.PENDING,
     });
@@ -119,7 +119,7 @@ describe('OutboxRepository (Integration)', () => {
       aggregateType: OutboxAggregateType.ORDER,
       aggregateId: '018f3a2b-1111-7000-8000-000000000004',
       partitionKey: TRADING_PAIRS.ETH_USDT,
-      eventType: DomainEventType.ORDER_PLACED,
+      eventType: DOMAIN_EVENT_TYPES.orderPlaced,
       payload: { fail: true },
       status: OutboxStatus.PENDING,
     });
@@ -137,7 +137,7 @@ describe('OutboxRepository (Integration)', () => {
       aggregateType: OutboxAggregateType.ORDER,
       aggregateId: '018f3a2b-1111-7000-8000-000000000005',
       partitionKey: TRADING_PAIRS.ETH_USDT,
-      eventType: DomainEventType.ORDER_PLACED,
+      eventType: DOMAIN_EVENT_TYPES.orderPlaced,
       payload: { old: true },
       status: OutboxStatus.PENDING,
     });

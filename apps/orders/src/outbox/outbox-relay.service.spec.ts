@@ -124,12 +124,8 @@ describe('OutboxRelayService (Unit)', () => {
     expect(count).toBe(2);
     expect(sendBatchMock.mock.calls.length).toBe(1);
 
-    const expectedOrderTopic = getKafkaTopicName('test', KAFKA_DOMAINS.orders, 'order_placed');
-    const expectedMatchingTopic = getKafkaTopicName(
-      'test',
-      KAFKA_DOMAINS.matching,
-      'trade_executed',
-    );
+    const expectedOrderTopic = getKafkaTopicName('test', KAFKA_DOMAINS.orders);
+    const expectedMatchingTopic = getKafkaTopicName('test', KAFKA_DOMAINS.matching);
 
     const sentRecords = sendBatchMock.mock.calls[0][0];
     expect(sentRecords).toHaveLength(2);
@@ -142,6 +138,7 @@ describe('OutboxRelayService (Unit)', () => {
         [KAFKA_HEADERS.originService]: KAFKA_CLIENT_IDS.orders,
         [KAFKA_HEADERS.eventId]: 'outbox-1',
         [KAFKA_HEADERS.aggregateId]: 'order-123',
+        [KAFKA_HEADERS.action]: 'ORDER_PLACED',
         [KAFKA_HEADERS.traceparent]: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
       },
     });
@@ -154,6 +151,7 @@ describe('OutboxRelayService (Unit)', () => {
         [KAFKA_HEADERS.originService]: KAFKA_CLIENT_IDS.orders,
         [KAFKA_HEADERS.eventId]: 'outbox-2',
         [KAFKA_HEADERS.aggregateId]: 'trade-456',
+        [KAFKA_HEADERS.action]: 'TRADE_EXECUTED',
       },
     });
 

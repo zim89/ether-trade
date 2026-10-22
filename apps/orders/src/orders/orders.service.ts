@@ -7,8 +7,10 @@ import { firstValueFrom } from 'rxjs';
 import { v7 as uuidv7 } from 'uuid';
 import { Currency } from '@app/common/constants';
 import { TelemetryMetricsService } from '@app/common/telemetry';
-import type {
-  AccountsServiceClient,
+import type { AccountsServiceClient } from '@app/contracts';
+import {
+  MATCHING_ACTIONS,
+  ORDER_ACTIONS,
   OrderCancelledEvent,
   OrderFilledEvent,
   OrderPlacedEvent,
@@ -229,6 +231,7 @@ export class OrdersService implements OnModuleInit {
           eventType: 'order_placed',
           payload: {
             eventId: uuidv7(),
+            action: ORDER_ACTIONS.placed,
             eventType: 'order.placed',
             aggregateId: initialOrder.id,
             partitionKey: initialOrder.pair,
@@ -270,6 +273,7 @@ export class OrdersService implements OnModuleInit {
             eventType: 'trade_executed',
             payload: {
               eventId: uuidv7(),
+              action: MATCHING_ACTIONS.tradeExecuted,
               eventType: 'matching.trade_executed',
               aggregateId: trade.tradeId,
               partitionKey: trade.symbol,
@@ -303,6 +307,7 @@ export class OrdersService implements OnModuleInit {
             eventType: 'order_filled',
             payload: {
               eventId: uuidv7(),
+              action: ORDER_ACTIONS.filled,
               eventType: 'order.filled',
               aggregateId: matchResult.takerOrder.id,
               partitionKey: matchResult.takerOrder.pair,
@@ -337,6 +342,7 @@ export class OrdersService implements OnModuleInit {
               eventType: 'order_filled',
               payload: {
                 eventId: uuidv7(),
+                action: ORDER_ACTIONS.filled,
                 eventType: 'order.filled',
                 aggregateId: makerOrder.id,
                 partitionKey: makerOrder.pair,
@@ -470,6 +476,7 @@ export class OrdersService implements OnModuleInit {
           eventType: 'order_cancelled',
           payload: {
             eventId: uuidv7(),
+            action: ORDER_ACTIONS.cancelled,
             eventType: 'order.cancelled',
             aggregateId: updated.id,
             partitionKey: updated.pair,

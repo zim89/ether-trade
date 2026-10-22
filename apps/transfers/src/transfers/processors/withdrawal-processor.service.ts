@@ -15,6 +15,7 @@ import {
   OutboxStatus,
   PROTO_SERVICES,
   SERVICE_CALLER_IDS,
+  TRANSFERS_ACTIONS,
 } from '@app/contracts';
 import { scalePlatformAmountToEvm } from '../../common/utils';
 import { DRIZZLE_CLIENT } from '../../database/database.constants';
@@ -243,6 +244,7 @@ export class WithdrawalProcessorService implements OnModuleInit, OnModuleDestroy
             eventType: 'withdrawal_completed',
             payload: {
               eventId: uuidv7(),
+              action: TRANSFERS_ACTIONS.withdrawalCompleted,
               eventType: 'transfers.withdrawal_completed',
               aggregateId: id,
               partitionKey: userId,
@@ -320,6 +322,7 @@ export class WithdrawalProcessorService implements OnModuleInit, OnModuleDestroy
             eventType: 'withdrawal_failed',
             payload: {
               eventId: uuidv7(),
+              action: TRANSFERS_ACTIONS.withdrawalFailed,
               eventType: 'transfers.withdrawal_failed',
               aggregateId: id,
               partitionKey: userId,

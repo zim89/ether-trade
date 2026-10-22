@@ -7,20 +7,23 @@ import {
   getKafkaTopicName,
   KAFKA_CONSUMER_GROUPS,
   KAFKA_DOMAINS,
-  KAFKA_TOPIC_EVENTS,
+  KAFKA_HEADERS,
 } from '@app/common/kafka/kafka.constants';
 import { KafkaBatchConsumerPayload } from '@app/common/kafka/kafka.types';
 import {
   DepositConfirmedEvent,
   DepositStatus,
+  DOMAIN_EVENT_TYPES,
   DomainEventEnvelope,
-  DomainEventType,
+  MATCHING_ACTIONS,
+  ORDER_ACTIONS,
   OrderCancelledEvent,
   OrderFilledEvent,
   OrderPlacedEvent,
   OrderSide,
   OrderStatus,
   TradeExecutedEvent,
+  TRANSFERS_ACTIONS,
   WithdrawalCompletedEvent,
   WithdrawalFailedEvent,
   WithdrawalStatus,
@@ -49,13 +52,9 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
     const appEnv = (configService.get<string>('appEnv') || 'dev').toLowerCase();
 
     const topics = [
-      getKafkaTopicName(appEnv, KAFKA_DOMAINS.matching, KAFKA_TOPIC_EVENTS.tradeExecuted),
-      getKafkaTopicName(appEnv, KAFKA_DOMAINS.orders, KAFKA_TOPIC_EVENTS.orderPlaced),
-      getKafkaTopicName(appEnv, KAFKA_DOMAINS.orders, KAFKA_TOPIC_EVENTS.orderCancelled),
-      getKafkaTopicName(appEnv, KAFKA_DOMAINS.orders, KAFKA_TOPIC_EVENTS.orderFilled),
-      getKafkaTopicName(appEnv, KAFKA_DOMAINS.transfers, KAFKA_TOPIC_EVENTS.depositConfirmed),
-      getKafkaTopicName(appEnv, KAFKA_DOMAINS.transfers, KAFKA_TOPIC_EVENTS.withdrawalCompleted),
-      getKafkaTopicName(appEnv, KAFKA_DOMAINS.transfers, KAFKA_TOPIC_EVENTS.withdrawalFailed),
+      getKafkaTopicName(appEnv, KAFKA_DOMAINS.matching),
+      getKafkaTopicName(appEnv, KAFKA_DOMAINS.orders),
+      getKafkaTopicName(appEnv, KAFKA_DOMAINS.transfers),
     ];
 
     super(configService, producerService, {
@@ -70,42 +69,63 @@ export class KafkaToWebSocketBridgeService extends BaseKafkaConsumer {
    */
   async handleMessage(payload: KafkaBatchConsumerPayload): Promise<void> {
     const envelope = payload.value as DomainEventEnvelope<unknown>;
-    if (!envelope || !envelope.eventType || !envelope.payload) {
+    if (!envelope || !envelope.payload) {
       return;
     }
 
-    switch (envelope.eventType) {
-      case DomainEventType.TRADE_EXECUTED:
-        await this.handleTradeExecuted(envelope.payload as TradeExecutedEvent);
-        break;
+    const action = envelope.action || payload.headers[KAFKA_HEADERS.action];
+    const eventType = envelope.eventType;
 
-      case DomainEventType.ORDER_PLACED:
-        await this.handleOrderPlaced(envelope.payload as OrderPlacedEvent);
-        break;
-
-      case DomainEventType.ORDER_CANCELLED:
-        await this.handleOrderCancelled(envelope.payload as OrderCancelledEvent);
-        break;
-
-      case DomainEventType.ORDER_FILLED:
-        await this.handleOrderFilled(envelope.payload as OrderFilledEvent);
-        break;
-
-      case DomainEventType.DEPOSIT_CONFIRMED:
-        await this.handleDepositConfirmed(envelope.payload as DepositConfirmedEvent);
-        break;
-
-      case DomainEventType.WITHDRAWAL_COMPLETED:
-        await this.handleWithdrawalCompleted(envelope.payload as WithdrawalCompletedEvent);
-        break;
-
-      case DomainEventType.WITHDRAWAL_FAILED:
-        await this.handleWithdrawalFailed(envelope.payload as WithdrawalFailedEvent);
-        break;
-
-      default:
-        this.logger.debug(`Unhandled eventType in WebSocket bridge: ${String(envelope.eventType)}`);
+    if (
+      action === MATCHING_ACTIONS.tradeExecuted ||
+      eventType === DOMAIN_EVENT_TYPES.tradeExecuted
+    ) {
+      await this.handleTradeExecuted(envelope.payload as TradeExecutedEvent);
+      return;
     }
+
+    if (action === ORDER_ACTIONS.placed || eventType === DOMAIN_EVENT_TYPES.orderPlaced) {
+      await this.handleOrderPlaced(envelope.payload as OrderPlacedEvent);
+      return;
+    }
+
+    if (action === ORDER_ACTIONS.cancelled || eventType === DOMAIN_EVENT_TYPES.orderCancelled) {
+      await this.handleOrderCancelled(envelope.payload as OrderCancelledEvent);
+      return;
+    }
+
+    if (action === ORDER_ACTIONS.filled || eventType === DOMAIN_EVENT_TYPES.orderFilled) {
+      await this.handleOrderFilled(envelope.payload as OrderFilledEvent);
+      return;
+    }
+
+    if (
+      action === TRANSFERS_ACTIONS.depositConfirmed ||
+      eventType === DOMAIN_EVENT_TYPES.depositConfirmed
+    ) {
+      await this.handleDepositConfirmed(envelope.payload as DepositConfirmedEvent);
+      return;
+    }
+
+    if (
+      action === TRANSFERS_ACTIONS.withdrawalCompleted ||
+      eventType === DOMAIN_EVENT_TYPES.withdrawalCompleted
+    ) {
+      await this.handleWithdrawalCompleted(envelope.payload as WithdrawalCompletedEvent);
+      return;
+    }
+
+    if (
+      action === TRANSFERS_ACTIONS.withdrawalFailed ||
+      eventType === DOMAIN_EVENT_TYPES.withdrawalFailed
+    ) {
+      await this.handleWithdrawalFailed(envelope.payload as WithdrawalFailedEvent);
+      return;
+    }
+
+    this.logger.debug(
+      `Unhandled action/eventType in WebSocket bridge: action=${String(action)}, eventType=${String(eventType)}`,
+    );
   }
 
   private getActiveTraceId(): string | undefined {

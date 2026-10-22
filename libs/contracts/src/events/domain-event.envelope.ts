@@ -1,15 +1,44 @@
 /**
  * Closed set of domain event types emitted across platform microservices.
  */
-export enum DomainEventType {
-  ORDER_PLACED = 'order.placed',
-  ORDER_CANCELLED = 'order.cancelled',
-  ORDER_FILLED = 'order.filled',
-  TRADE_EXECUTED = 'matching.trade_executed',
-  DEPOSIT_CONFIRMED = 'transfers.deposit_confirmed',
-  WITHDRAWAL_COMPLETED = 'transfers.withdrawal_completed',
-  WITHDRAWAL_FAILED = 'transfers.withdrawal_failed',
-}
+export const DOMAIN_EVENT_TYPES = {
+  orderPlaced: 'order.placed',
+  orderCancelled: 'order.cancelled',
+  orderFilled: 'order.filled',
+  tradeExecuted: 'matching.trade_executed',
+  depositConfirmed: 'transfers.deposit_confirmed',
+  withdrawalCompleted: 'transfers.withdrawal_completed',
+  withdrawalFailed: 'transfers.withdrawal_failed',
+} as const;
+export type DomainEventType = (typeof DOMAIN_EVENT_TYPES)[keyof typeof DOMAIN_EVENT_TYPES];
+
+/**
+ * Domain actions for the Orders lifecycle topic.
+ */
+export const ORDER_ACTIONS = {
+  placed: 'ORDER_PLACED',
+  cancelled: 'ORDER_CANCELLED',
+  filled: 'ORDER_FILLED',
+} as const;
+export type OrderAction = (typeof ORDER_ACTIONS)[keyof typeof ORDER_ACTIONS];
+
+/**
+ * Domain actions for the Matching lifecycle topic.
+ */
+export const MATCHING_ACTIONS = {
+  tradeExecuted: 'TRADE_EXECUTED',
+} as const;
+export type MatchingAction = (typeof MATCHING_ACTIONS)[keyof typeof MATCHING_ACTIONS];
+
+/**
+ * Domain actions for the Transfers lifecycle topic.
+ */
+export const TRANSFERS_ACTIONS = {
+  depositConfirmed: 'DEPOSIT_CONFIRMED',
+  withdrawalCompleted: 'WITHDRAWAL_COMPLETED',
+  withdrawalFailed: 'WITHDRAWAL_FAILED',
+} as const;
+export type TransfersAction = (typeof TRANSFERS_ACTIONS)[keyof typeof TRANSFERS_ACTIONS];
 
 /**
  * Standard domain event envelope ensuring consistent metadata across all Kafka events.
@@ -21,9 +50,14 @@ export interface DomainEventEnvelope<T = unknown> {
   readonly eventId: string;
 
   /**
-   * Domain event type discriminator.
+   * Lifecycle action discriminator for the event.
    */
-  readonly eventType: DomainEventType;
+  readonly action?: string;
+
+  /**
+   * Domain event type discriminator (legacy/compatibility).
+   */
+  readonly eventType: DomainEventType | (string & {});
 
   /**
    * Identifier of the root aggregate that emitted the event (e.g. orderId, tradeId, userId).
